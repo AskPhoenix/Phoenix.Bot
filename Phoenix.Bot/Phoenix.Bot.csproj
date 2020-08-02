@@ -4,33 +4,21 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ApplicationInsightsResourceId>/subscriptions/158d7265-c8df-4fbd-96df-1d003a650372/resourcegroups/PhoenixRsrcG/providers/microsoft.insights/components/AskPhoenixsa3ypn</ApplicationInsightsResourceId>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AdaptiveCards" Version="1.2.4" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.13.1" />
-    <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.8.0" />
-    <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.8.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.14.0" />
+    <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.9.4" />
+    <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.9.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.6" />
-  </ItemGroup>
-
-    <ItemGroup>
-    <Content Update="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <PackageReference Include="Phoenix.DataHandle" Version="1.0.1" />
   </ItemGroup>
 
     <ItemGroup>
       <WCFMetadata Include="Connected Services" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Dialogs\Teacher\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Phoenix.DataHandle\Phoenix.DataHandle.csproj" />
     </ItemGroup>
 
 </Project>
