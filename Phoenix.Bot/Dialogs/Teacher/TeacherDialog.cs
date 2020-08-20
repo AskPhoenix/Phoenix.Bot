@@ -1,25 +1,31 @@
-﻿using System.Threading;
+﻿using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Extensions;
 using Phoenix.Bot.Helpers;
+using Phoenix.DataHandle.Main.Models;
 using static Phoenix.Bot.Helpers.ChannelHelper.Facebook;
 
 namespace Phoenix.Bot.Dialogs.Teacher
 {
     public class TeacherDialog : ComponentDialog
     {
+        private readonly PhoenixContext _phoenixContext;
+
         private static class WaterfallNames
         {
             public const string Menu = "Teacher_Menu_WaterfallDialog";
             public const string Help = "Teacher_Help_WaterfallDialog";
         }
 
-        public TeacherDialog()
+        public TeacherDialog(PhoenixContext phoenixContext)
             : base(nameof(TeacherDialog))
         {
+            _phoenixContext = phoenixContext;
+
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new WaterfallDialog(WaterfallNames.Menu,
                 new WaterfallStep[]
@@ -91,6 +97,8 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     imageUrl += "schedule_bg.png";
                     break;
             }
+
+            button.Url += "?signature=" + _phoenixContext.AspNetUsers.Single(u => u.FacebookId == stepContext.Context.Activity.From.Id).getHashSignature();
 
             var taskCard = new GenericTemplate()
             {
