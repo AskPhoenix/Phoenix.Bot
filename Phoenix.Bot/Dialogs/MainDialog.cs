@@ -91,6 +91,10 @@ namespace Phoenix.Bot.Dialogs
             if (oldIsAuth)
                 return await stepContext.NextAsync(null, cancellationToken);
 
+            bool acceptedTerms = await _userState.CreateProperty<bool>("AcceptedTerms").GetAsync(stepContext.Context);
+            if (!acceptedTerms)
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+
             await isAuthAcsr.SetAsync(stepContext.Context, true);
 
             var phoneAcsr = _conversationState.CreateProperty<string>("Phone");
@@ -104,7 +108,11 @@ namespace Phoenix.Bot.Dialogs
             string code = await codeAcsr.GetAsync(stepContext.Context);
             await codeAcsr.DeleteAsync(stepContext.Context);
 
-            var user = _phoenixContext.AspNetUsers.SingleOrDefault(u => u.PhoneNumber == phone && u.OneTimeCode == code);
+            var user = _phoenixContext.AspNetUsers
+                .Include(u => u.User)
+                .SingleOrDefault(u => u.PhoneNumber == phone && u.OneTimeCode == code);
+
+            user.User.TermsAccepted = acceptedTerms;
             user.FacebookId = stepContext.Context.Activity.From.Id;
             if (!string.IsNullOrEmpty(code))
                 user.OneTimeCodeUsed = true;
