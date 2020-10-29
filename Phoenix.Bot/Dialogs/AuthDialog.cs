@@ -106,9 +106,12 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            string schoolName = _phoenixContext.School.SingleOrDefault(s => s.FacebookPageId == stepContext.Context.Activity.Recipient.Id)?.Name;
+
+            await stepContext.Context.SendActivityAsync("Καλωσόρισες στον έξυπνο βοηθό μας! 😁");
             var card = new HeroCard
             {
-                Title = "Καλωσόρισες στο Phoenix! 😁",
+                Title = schoolName ?? "AskPhoenix",
                 Text = "Πάτησε ή πληκτρολόγησε \"Σύνδεση\" για να ξεκινήσουμε!",
                 Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.askphoenix.gr"),
                 Buttons = new List<CardAction>
