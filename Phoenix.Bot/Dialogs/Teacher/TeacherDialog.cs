@@ -47,7 +47,7 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     new FoundChoice()
                     {
                         Index = index,
-                        Value = index switch { 0 => "Εργασίες", 1 => "Διαγωνίσματα", 2 => "Βαθμολογίες", 3 => "Πρόγραμμα", _ => string.Empty },
+                        Value = index switch { 0 => "Εργασίες", 1 => "Διαγωνίσματα", 2 => /*"Βαθμολογίες", 3 =>*/ "Πρόγραμμα", _ => string.Empty },
                         Score = 1.0f
                     },
                     cancellationToken);
@@ -59,7 +59,7 @@ namespace Phoenix.Bot.Dialogs.Teacher
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω απαντήσεις:"),
-                    Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", "💯 Βαθμολογίες", "📅 Πρόγραμμα" })
+                    Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", /*"💯 Βαθμολογίες", */"📅 Πρόγραμμα" })
                 },
                 cancellationToken);
         }
@@ -86,12 +86,12 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     button.Url += "teacher/exams";
                     imageUrl += "exam_bg.png";
                     break;
+                //case 2:
+                //    taskArticle = "τις";
+                //    button.Url += "teacher/gradation";
+                //    imageUrl += "gradation_bg.png";
+                //    break;
                 case 2:
-                    taskArticle = "τις";
-                    button.Url += "teacher/gradation";
-                    imageUrl += "gradation_bg.png";
-                    break;
-                case 3:
                     taskArticle = "το";
                     button.Url += "teacher/schedule";
                     imageUrl += "schedule_bg.png";
