@@ -1,6 +1,8 @@
 ﻿using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
@@ -98,7 +100,10 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     break;
             }
 
-            button.Url += "?signature=" + _phoenixContext.AspNetUsers.Single(u => u.FacebookId == stepContext.Context.Activity.From.Id).getHashSignature();
+            string signature = _phoenixContext.AspNetUsers.Single(u => u.FacebookId == stepContext.Context.Activity.From.Id).getHashSignature();
+            signature = WebUtility.UrlEncode(signature);
+            
+            button.Url += $"?signature={signature}";
 
             var taskCard = new GenericTemplate()
             {
