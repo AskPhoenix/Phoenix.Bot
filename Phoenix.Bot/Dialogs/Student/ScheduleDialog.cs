@@ -98,7 +98,8 @@ namespace Phoenix.Bot.Dialogs.Student
                 {
                     card.Body.Add(new AdaptiveTextBlockHeaderLight(lec.Course.Name + (lec.Course.SubCourse != null ? $" - {lec.Course.SubCourse}" : "")));
                     card.Body.Add(new AdaptiveRichFactSetLight("Ώρες ", $"{lec.StartDateTime:t} - {lec.EndDateTime:t}"));
-                    card.Body.Add(new AdaptiveRichFactSetLight("Αίθουσα ", lec.Classroom.Name, separator: true));
+                    if (lec.Classroom != null)
+                        card.Body.Add(new AdaptiveRichFactSetLight("Αίθουσα ", lec.Classroom.Name, separator: true));
                     card.Body.Add(new AdaptiveRichFactSetLight("Κατάσταση ", lec.Status.ToGreekString(), separator: true));
                     card.Body.Add(new AdaptiveRichFactSetLight("Σχόλια ", string.IsNullOrEmpty(lec.Info) ? "-" : lec.Info, separator: true));
                 }
