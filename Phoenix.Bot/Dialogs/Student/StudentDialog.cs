@@ -85,7 +85,7 @@ namespace Phoenix.Bot.Dialogs.Student
         private async Task<DialogTurnResult> TaskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var foundChoice = stepContext.Result as FoundChoice;
-            stepContext.Values.Add("selTaskInd", (int)foundChoice.Index);
+            stepContext.Values.Add("selTaskInd", foundChoice.Index.ToString());
 
             return foundChoice.Index switch
             {
@@ -102,7 +102,7 @@ namespace Phoenix.Bot.Dialogs.Student
             // 1/3 possibility to ask for Feedback
             if (new Random().Next(3) == 0)
             {
-                var feedbackOccasion = (Feedback.Occasion)(int)stepContext.Values["selTaskInd"];
+                var feedbackOccasion = (Feedback.Occasion)int.Parse((string)stepContext.Values["selTaskInd"]);
                 return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOccasion, cancellationToken);
             }
 

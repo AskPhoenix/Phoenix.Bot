@@ -138,7 +138,7 @@ namespace Phoenix.Bot.Dialogs
             var card = new HeroCard
             {
                 Title = "Όροι Παροχής Υπηρεσίας",
-                Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης του AskPhoenix.",
+                Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης.",
                 Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html"),
                 Buttons = new List<CardAction>
                 {
