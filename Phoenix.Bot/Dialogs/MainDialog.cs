@@ -108,9 +108,11 @@ namespace Phoenix.Bot.Dialogs
             string code = await codeAcsr.GetAsync(stepContext.Context);
             await codeAcsr.DeleteAsync(stepContext.Context);
 
-            var user = _phoenixContext.AspNetUsers
-                .Include(u => u.User)
-                .SingleOrDefault(u => u.PhoneNumber == phone && u.OneTimeCode == code);
+            string schoolFbId = stepContext.Context.Activity.Recipient.Id;
+            var user = _phoenixContext.UserSchool.
+                Include(us => us.AspNetUser).
+                SingleOrDefault(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId && us.AspNetUser.OneTimeCode == code).
+                AspNetUser;
 
             user.User.TermsAccepted = acceptedTerms;
             user.FacebookId = stepContext.Context.Activity.From.Id;
