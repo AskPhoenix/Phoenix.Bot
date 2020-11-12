@@ -1,8 +1,8 @@
-﻿using Microsoft.Bot.Builder.Integration.AspNet.Core;
+﻿using Bot.Builder.Community.Storage.EntityFramework;
+using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Builder.TraceExtensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Phoenix.DataHandle.Bot.Storage;
 
 namespace Phoenix.Bot.Extensions
 {
