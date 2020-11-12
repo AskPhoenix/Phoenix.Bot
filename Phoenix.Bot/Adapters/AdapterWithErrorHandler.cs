@@ -4,11 +4,12 @@ using Microsoft.Bot.Builder.TraceExtensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Phoenix.Bot.Extensions
+namespace Phoenix.Bot.Adapters
 {
     public class AdapterWithErrorHandler : BotFrameworkHttpAdapter
     {
-        public AdapterWithErrorHandler(IConfiguration configuration,
+        public AdapterWithErrorHandler(
+            IConfiguration configuration,
             ILogger<BotFrameworkHttpAdapter> logger,
             EntityFrameworkTranscriptStore transcriptStore)
             : base(configuration, logger)

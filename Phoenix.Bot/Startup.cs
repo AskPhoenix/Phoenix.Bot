@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Phoenix.Bot.Adapters;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Student;
 using Phoenix.Bot.Dialogs.Teacher;
-using Phoenix.Bot.Extensions;
 using Phoenix.DataHandle.Main.Models;
 using System.Globalization;
 
