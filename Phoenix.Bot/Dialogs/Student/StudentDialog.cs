@@ -2,13 +2,15 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.DataHandle.Main;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using static Phoenix.Bot.Helpers.ChannelHelper.Facebook;
 
 namespace Phoenix.Bot.Dialogs.Student
 {
@@ -52,7 +54,7 @@ namespace Phoenix.Bot.Dialogs.Student
         protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
             string mess = innerDc.Context.Activity.Text;
-            InitialDialogId = mess.ContainsSynonyms(SynonymHelper.Topics.Help) ? WaterfallNames.Help : WaterfallNames.Menu;
+            InitialDialogId = mess.ContainsSynonyms(Synonyms.Topics.Help) ? WaterfallNames.Help : WaterfallNames.Menu;
 
             return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
@@ -102,7 +104,7 @@ namespace Phoenix.Bot.Dialogs.Student
             // 1/3 possibility to ask for Feedback
             if (new Random().Next(3) == 0)
             {
-                var feedbackOccasion = (Feedback.Occasion)int.Parse((string)stepContext.Values["selTaskInd"]);
+                var feedbackOccasion = (BotFeedbackOccasion)int.Parse((string)stepContext.Values["selTaskInd"]);
                 return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOccasion, cancellationToken);
             }
 

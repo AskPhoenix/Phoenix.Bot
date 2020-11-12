@@ -6,15 +6,16 @@ using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Dialogs.Student.Common;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.AdaptiveCards;
+using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Helpers.CardHelper;
 
 namespace Phoenix.Bot.Dialogs.Student
 {
@@ -93,7 +94,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> CourseStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var today = DialogHelper.GreeceLocalTime().Date;
+            var today = CalendarExtensions.GreeceLocalTime().Date;
             string userFbId = stepContext.Context.Activity.From.Id;
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 
@@ -134,7 +135,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             if (lecWithHw.Any(l => l.EndDateTime >= grNow))
             {
                 var nextLec = lecWithHw.
@@ -181,7 +182,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
 
             var pLecDates = _phoenixContext.Lecture.
                 Where(l => selCourseIds.Contains(l.CourseId) && l.StartDateTime < grNow && l.Exercise.Count > 0).
@@ -227,7 +228,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             string fbId = stepContext.Context.Activity.From.Id;
             var lecDate = lec.StartDateTime;
-            bool forPastLec = lecDate < DialogHelper.GreeceLocalTime();
+            bool forPastLec = lecDate < CalendarExtensions.GreeceLocalTime();
             decimal? grade = null;
             const int pageSize = 3;
 
@@ -274,7 +275,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 await pageAcsr.SetAsync(stepContext.Context, page + 1);
 
                 string showMoreNumEmoji = string.Empty;
-                foreach (var digit in showMoreNum.ToDigitsArray())
+                foreach (var digit in showMoreNum.GetDigitsArray())
                     showMoreNumEmoji += digit.ToString() + "\ufe0f\u20e3";
 
                 return await stepContext.PromptAsync(
@@ -328,7 +329,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             var lecDates = _phoenixContext.Lecture.
                     Where(l => selCourseIds.Contains(l.CourseId) && l.Exercise.Count > 0).
                     Select(l => l.StartDateTime).
@@ -355,7 +356,7 @@ namespace Phoenix.Bot.Dialogs.Student
         {
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
-            var selDate = DialogHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var lec = _phoenixContext.Lecture.
                 Include(l => l.Exercise).
                 FirstOrDefault(l => selCourseIds.Contains(l.CourseId) && l.StartDateTime.Date == selDate.Date);
@@ -380,7 +381,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.NextAsync(null, cancellationToken);
             }
 
-            bool isPastLec = selDate < DialogHelper.GreeceLocalTime();
+            bool isPastLec = selDate < CalendarExtensions.GreeceLocalTime();
             bool singular = hwCount == 1;
             await stepContext.Context.SendActivityAsync($"Για τις {selDate:m} {(isPastLec ? "είχες" : "έχεις")} τ{(singular ? "ην" : "ις")} " +
                 $"παρακάτω εργασί{(singular ? "α" : "ες")}:");

@@ -5,8 +5,10 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.AdaptiveCards;
+using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using System;
@@ -14,7 +16,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Helpers.CardHelper;
 
 namespace Phoenix.Bot.Dialogs.Student
 {
@@ -61,7 +62,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> DayStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            DateTime date = stepContext.Options is DateTime dt ? dt : DialogHelper.GreeceLocalTime();
+            DateTime date = stepContext.Options is DateTime dt ? dt : CalendarExtensions.GreeceLocalTime();
             string userFbId = stepContext.Context.Activity.From.Id;
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 
@@ -74,7 +75,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             if (lecs.Count() == 0)
             {
-                int dayOffset = (DialogHelper.GreeceLocalTime() - date).Days;
+                int dayOffset = (CalendarExtensions.GreeceLocalTime() - date).Days;
                 string dayName = dayOffset switch
                 {
                     0 => "σήμερα",
@@ -134,7 +135,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> DayOtherStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             var choices = new List<string>(8);
             for (int i = 1; i <= 7; i++)
             {
@@ -159,7 +160,7 @@ namespace Phoenix.Bot.Dialogs.Student
             if (foundChoiceIndex == 7)
                 return await stepContext.NextAsync(null, cancellationToken);
 
-            DateTime date = DialogHelper.GreeceLocalTime().AddDays(foundChoiceIndex + 1);
+            DateTime date = CalendarExtensions.GreeceLocalTime().AddDays(foundChoiceIndex + 1);
             return await stepContext.ReplaceDialogAsync(WaterfallNames.Day, date, cancellationToken);
         }
 
@@ -174,7 +175,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> SpecificDateSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var selDate = DialogHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             return await stepContext.ReplaceDialogAsync(WaterfallNames.Day, selDate, cancellationToken);
         }
 
@@ -184,7 +185,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> WeekStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             string userFbId = stepContext.Context.Activity.From.Id;
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 

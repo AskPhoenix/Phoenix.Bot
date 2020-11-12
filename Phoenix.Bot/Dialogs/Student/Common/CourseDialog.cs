@@ -1,8 +1,8 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Linguistic;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;

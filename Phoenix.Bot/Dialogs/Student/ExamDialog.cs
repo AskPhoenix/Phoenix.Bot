@@ -6,15 +6,17 @@ using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Dialogs.Student.Common;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.AdaptiveCards;
+using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Helpers.CardHelper;
 
 namespace Phoenix.Bot.Dialogs.Student
 {
@@ -99,7 +101,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> CourseStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var today = DialogHelper.GreeceLocalTime().Date;
+            var today = CalendarExtensions.GreeceLocalTime().Date;
             string userFbId = stepContext.Context.Activity.From.Id;
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 
@@ -132,7 +134,7 @@ namespace Phoenix.Bot.Dialogs.Student
             var exams = _phoenixContext.Exam.Where(e => selCourseIds.Contains(e.Lecture.CourseId));
 
             bool anyExams = exams.Any();
-            bool anyFutureExams = exams.Any(e => e.Lecture.EndDateTime >= DialogHelper.GreeceLocalTime());
+            bool anyFutureExams = exams.Any(e => e.Lecture.EndDateTime >= CalendarExtensions.GreeceLocalTime());
             bool anyGradedExams = exams.Any(e => e.StudentExam.Any(se => se.Student.AspNetUser.FacebookId == fbId && se.Exam.Id == e.Id && se.Grade != null));
 
             if (!anyExams)
@@ -153,7 +155,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             if (!anyGradedExams)
             {
-                if (!exams.Any(e => e.Lecture.EndDateTime < DialogHelper.GreeceLocalTime()))
+                if (!exams.Any(e => e.Lecture.EndDateTime < CalendarExtensions.GreeceLocalTime()))
                     await stepContext.Context.SendActivityAsync("Δεν έχουν βγει ακόμα βαθμοί για κάποιο διαγώνισμα.");
 
                 return await stepContext.NextAsync(0, cancellationToken);
@@ -194,7 +196,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             var nextExam = _phoenixContext.Exam.
                 Include(e => e.Lecture.Classroom).
-                Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= DialogHelper.GreeceLocalTime()).
+                Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= CalendarExtensions.GreeceLocalTime()).
                 AsEnumerable().
                 Aggregate((e, ne) => e.Lecture.StartDateTime < ne.Lecture.StartDateTime ? e : ne);
 
@@ -263,7 +265,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 await pageAcsr.SetAsync(stepContext.Context, page + 1);
 
                 string showMoreNumEmoji = string.Empty;
-                foreach (var digit in showMoreNum.ToDigitsArray())
+                foreach (var digit in showMoreNum.GetDigitsArray())
                     showMoreNumEmoji += digit.ToString() + "\ufe0f\u20e3";
 
                 return await stepContext.PromptAsync(
@@ -296,7 +298,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
-            if (_phoenixContext.Exam.Count(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= DialogHelper.GreeceLocalTime()) == 1)
+            if (_phoenixContext.Exam.Count(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= CalendarExtensions.GreeceLocalTime()) == 1)
             {
                 await stepContext.Context.SendActivityAsync("Αυτό ήταν το μόνο προγραμματισμένο διαγώνισμα.");
 
@@ -321,7 +323,7 @@ namespace Phoenix.Bot.Dialogs.Student
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
             var examDates = _phoenixContext.Exam.
-                Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= DialogHelper.GreeceLocalTime()).
+                Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime >= CalendarExtensions.GreeceLocalTime()).
                 Select(e => e.Lecture.StartDateTime).
                 OrderBy(d => d).
                 Take(5).
@@ -346,7 +348,7 @@ namespace Phoenix.Bot.Dialogs.Student
         {
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
-            var selDate = DialogHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var exam = _phoenixContext.Exam.
                 Include(e => e.Lecture.Classroom).
                 FirstOrDefault(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.StartDateTime.Date == selDate.Date);
@@ -355,7 +357,7 @@ namespace Phoenix.Bot.Dialogs.Student
             {
                 exam = _phoenixContext.Exam.
                     Include(e => e.Lecture.Classroom).
-                    Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime > DialogHelper.GreeceLocalTime()).
+                    Where(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.EndDateTime > CalendarExtensions.GreeceLocalTime()).
                     AsEnumerable().
                     Aggregate((e, fe) => Math.Abs((e.Lecture.StartDateTime - selDate).Days) < Math.Abs((fe.Lecture.StartDateTime - selDate).Days) ? e : fe);
 
@@ -365,7 +367,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Material, exam.Id, cancellationToken);
             }
 
-            string dayArticle = DialogHelper.GreekDayArticle(exam.Lecture.StartDateTime.DayOfWeek);
+            string dayArticle = Greek.DayArticle(exam.Lecture.StartDateTime.DayOfWeek);
             await stepContext.Context.SendActivityAsync($"Για το διαγώνισμα {dayArticle} {exam.Lecture.StartDateTime.DayOfWeek} " +
                     $"{exam.Lecture.StartDateTime:m} στις {exam.Lecture.StartDateTime:t}" 
                     + exam.Lecture.ClassroomId != null ? $" στην αίθουσα {exam.Lecture.Classroom.Name} " : " "
@@ -421,7 +423,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             string fbId = stepContext.Context.Activity.From.Id;
             if (_phoenixContext.StudentExam.Count(se => se.Student.AspNetUser.FacebookId == fbId && selCourseIds.Contains(se.Exam.Lecture.CourseId) 
                 && se.Exam.Lecture.EndDateTime < grNow && se.Grade != null) == 1)
@@ -447,7 +449,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 return await stepContext.EndDialogAsync(null, cancellationToken);
 
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
-            var grNow = DialogHelper.GreeceLocalTime();
+            var grNow = CalendarExtensions.GreeceLocalTime();
             string fbId = stepContext.Context.Activity.From.Id;
 
             var examDates = _phoenixContext.StudentExam.
@@ -480,7 +482,7 @@ namespace Phoenix.Bot.Dialogs.Student
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
             string fbId = stepContext.Context.Activity.From.Id;
 
-            var selDate = DialogHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var gradedStudentExams = _phoenixContext.StudentExam.
                 Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUser.FacebookId == fbId && se.Grade != null);
 
@@ -498,7 +500,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
                 studentExam = gradedStudentExams.
                     Include(se => se.Exam).
-                    Where(se => se.Exam.Lecture.EndDateTime < DialogHelper.GreeceLocalTime()).
+                    Where(se => se.Exam.Lecture.EndDateTime < CalendarExtensions.GreeceLocalTime()).
                     AsEnumerable().
                     Aggregate((se, pse) => Math.Abs((se.Exam.Lecture.StartDateTime - selDate).Days) < Math.Abs((pse.Exam.Lecture.StartDateTime - selDate).Days) ? se : pse);
 

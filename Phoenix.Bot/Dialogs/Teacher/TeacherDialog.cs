@@ -2,14 +2,14 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.DataHandle.Main.Models;
-using static Phoenix.Bot.Helpers.ChannelHelper.Facebook;
 
 namespace Phoenix.Bot.Dialogs.Teacher
 {

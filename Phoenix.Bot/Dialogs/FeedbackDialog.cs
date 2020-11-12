@@ -1,8 +1,9 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Extensions;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -76,12 +77,12 @@ namespace Phoenix.Bot.Dialogs
 
             if (Persistent.TryGetCommand(innerDc.Context.Activity.Text, out Persistent.Command cmd) && cmd == Persistent.Command.Feedback)
             {
-                botFeedback.Occasion = Feedback.Occasion.Persistent_Menu.ToString();
+                botFeedback.Occasion = BotFeedbackOccasion.Persistent_Menu;
                 InitialDialogId = WaterfallNames.Spontaneous;
             }
             else
             {
-                botFeedback.Occasion = ((Feedback.Occasion)options).ToString();
+                botFeedback.Occasion = (BotFeedbackOccasion)options;
                 InitialDialogId = WaterfallNames.Triggered;
             }
 
@@ -119,19 +120,19 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Τι είδους σχόλιο θα ήθελες να κάνεις;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε μία από τις παρακάτω κατηγορίες:"),
-                    Choices = ChoiceFactory.ToChoices(Feedback.CategoriesGreek)
+                    Choices = ChoiceFactory.ToChoices(BotFeedbackCategoryExtensions.GetCategoryNames(includeEmoji: true))
                 });
         }
 
         private async Task<DialogTurnResult> RedirectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var selCat = (Feedback.Category)(stepContext.Result as FoundChoice).Index;
+            var selCat = (BotFeedbackCategory)(stepContext.Result as FoundChoice).Index;
 
             var botFeedback = await _botFeedback.GetAsync(stepContext.Context);
-            botFeedback.Category = selCat.ToString();
+            botFeedback.Category = selCat;
             await _botFeedback.SetAsync(stepContext.Context, botFeedback);
 
-            if (selCat == Feedback.Category.Rating)
+            if (selCat == BotFeedbackCategory.Rating)
                 return await stepContext.BeginDialogAsync(WaterfallNames.Rating, null, cancellationToken);
             
             return await stepContext.BeginDialogAsync(WaterfallNames.Comment, selCat, cancellationToken);
@@ -157,7 +158,7 @@ namespace Phoenix.Bot.Dialogs
         {
             var foundChoice = stepContext.Result as FoundChoice;
             if (foundChoice.Index == 0)
-                return await stepContext.BeginDialogAsync(WaterfallNames.Comment, Feedback.Category.Comment, cancellationToken);
+                return await stepContext.BeginDialogAsync(WaterfallNames.Comment, BotFeedbackCategory.Comment, cancellationToken);
 
             await stepContext.Context.SendActivityAsync("Εντάξει! Ίσως μια άλλη φορά!");
             return await stepContext.EndDialogAsync(null, cancellationToken);
@@ -195,12 +196,12 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> CommentPromptStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var reply = (Feedback.Category)stepContext.Options switch
+            var reply = (BotFeedbackCategory)stepContext.Options switch
             {
-                Feedback.Category.Comment => MessageFactory.Text("Ωραία! Σε ακούω:"),
-                Feedback.Category.Copliment => MessageFactory.Text("Τέλεια!! 😍 Ανυπομονώ να ακούσω:"),
-                Feedback.Category.Suggestion => MessageFactory.Text("Ανυπομονώ να ακούσω την ιδέα σου:"),
-                Feedback.Category.Complaint => MessageFactory.Text("Λυπάμαι αν σε στενοχώρησα 😢 Πες μου τι σε ενόχλησε:")
+                BotFeedbackCategory.Comment => MessageFactory.Text("Ωραία! Σε ακούω:"),
+                BotFeedbackCategory.Copliment => MessageFactory.Text("Τέλεια!! 😍 Ανυπομονώ να ακούσω:"),
+                BotFeedbackCategory.Suggestion => MessageFactory.Text("Ανυπομονώ να ακούσω την ιδέα σου:"),
+                BotFeedbackCategory.Complaint => MessageFactory.Text("Λυπάμαι αν σε στενοχώρησα 😢 Πες μου τι σε ενόχλησε:")
             };
 
             return await stepContext.PromptAsync(

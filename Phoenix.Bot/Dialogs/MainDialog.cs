@@ -6,14 +6,15 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Phoenix.Bot.Dialogs.Teacher;
-using static Phoenix.Bot.Helpers.DialogHelper;
-using Phoenix.Bot.Helpers;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
 using Phoenix.DataHandle.Main;
 using Microsoft.EntityFrameworkCore;
-using Phoenix.Bot.Extensions;
 using Microsoft.Bot.Builder.Dialogs.Choices;
+using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
 
 namespace Phoenix.Bot.Dialogs
 {
@@ -147,16 +148,16 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> GreetingStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             string mess = stepContext.Context.Activity.Text;
-            if (!mess.ContainsSynonyms(SynonymHelper.Topics.Greetings))
+            if (!mess.ContainsSynonyms(Synonyms.Topics.Greetings))
                 return await stepContext.NextAsync(null, cancellationToken);
 
             var reply = MessageFactory.ContentUrl(
-                url: await ReceiveGifAsync("g", "hi", 10, new Random().Next(10), _configuration["GiphyKey"]),
+                url: await DialogsHelper.CreateGifUrlAsync("g", "hi", 10, new Random().Next(10), _configuration["GiphyKey"]),
                 contentType: "image/gif");
             await stepContext.Context.SendActivityAsync(reply);
 
             var name = _phoenixContext.User.Single(u => u.AspNetUser.FacebookId == stepContext.Context.Activity.From.Id).FirstName;
-            reply = MessageFactory.Text($"Γεια σου {GreekNameCall(name)}! 😊");
+            reply = MessageFactory.Text($"Γεια σου {Greek.NameVocative(name)}! 😊");
             await stepContext.Context.SendActivityAsync(reply);
 
             return await stepContext.NextAsync(null, cancellationToken);

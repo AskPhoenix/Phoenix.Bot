@@ -6,14 +6,13 @@ using System.Threading.Tasks;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using System;
-using Phoenix.Bot.Extensions;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Phoenix.DataHandle.Sms;
-using Phoenix.Bot.Helpers;
-using static Phoenix.Bot.Helpers.DialogHelper;
 using Microsoft.EntityFrameworkCore;
+using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
 
 namespace Phoenix.Bot.Dialogs
 {
@@ -49,8 +48,8 @@ namespace Phoenix.Bot.Dialogs
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
-            AddDialog(new NumberPrompt<long>(PromptNames.Phone, PhoneNumberPromptValidator));
-            AddDialog(new NumberPrompt<int>(PromptNames.Pin, PinPromptValidator));
+            AddDialog(new NumberPrompt<long>(PromptNames.Phone, PromptValidators.PhoneNumberPromptValidator));
+            AddDialog(new NumberPrompt<int>(PromptNames.Pin, PromptValidators.PinPromptValidator));
 
             AddDialog(new WaterfallDialog(WaterfallNames.Main,
                 new WaterfallStep[]
@@ -363,7 +362,7 @@ namespace Phoenix.Bot.Dialogs
                 pin = Convert.ToInt32(_configuration["TestPin"]);
             else
             {
-                string name = GreekNameCall(stepContext.Context.Activity.From.Name.Split(' ')[0]);
+                string name = Greek.NameVocative(stepContext.Context.Activity.From.Name.Split(' ')[0]);
                 var sms = new SmsService(_configuration["NexmoSMS:ApiKey"], _configuration["NexmoSMS:ApiSecret"]);
                 await sms.SendAsync(phone, $"Το pin σου για το Phoenix είναι το {pin}.");   //TODO: και έχει διάρκεια 5 λεπτά."
             }

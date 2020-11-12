@@ -1,7 +1,8 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
-using Phoenix.Bot.Helpers;
+using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.Bot.Utilities.Channels.Facebook;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,8 +42,8 @@ namespace Phoenix.Bot.Bots
             string mess = turnContext.Activity.Text;
             
             bool resetConversation = Persistent.IsCommand(mess) 
-                || mess.ContainsSynonyms(SynonymHelper.Topics.Greetings)
-                || (mess.ContainsSynonyms(SynonymHelper.Topics.Help) 
+                || mess.ContainsSynonyms(Synonyms.Topics.Greetings)
+                || (mess.ContainsSynonyms(Synonyms.Topics.Help) 
                     && await UserState.CreateProperty<bool>("IsAuthenticated").GetAsync(turnContext, cancellationToken: cancellationToken));
 
             if (resetConversation)

@@ -3,12 +3,12 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Extensions;
-using static Phoenix.Bot.Helpers.ChannelHelper.Facebook;
 using Microsoft.Bot.Schema;
 using System.Collections.Generic;
-using Phoenix.Bot.Helpers;
 using Phoenix.DataHandle.Main;
+using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
+using Phoenix.Bot.Utilities.Dialogs.Prompts;
 
 namespace Phoenix.Bot.Dialogs
 {
