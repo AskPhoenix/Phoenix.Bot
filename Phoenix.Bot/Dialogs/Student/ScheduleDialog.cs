@@ -69,7 +69,7 @@ namespace Phoenix.Bot.Dialogs.Student
             var lecs = _phoenixContext.Lecture.
                 Include(l => l.Course).
                 Include(l => l.Classroom).
-                Where(l => l.Course.StudentCourse.Any(sc => sc.Student.AspNetUser.FacebookId == userFbId) && l.Course.School.FacebookPageId == schoolFbId
+                Where(l => l.Course.StudentCourse.Any(sc => sc.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId)) && l.Course.School.FacebookPageId == schoolFbId
                     && l.StartDateTime.Date == date.Date).
                 OrderBy(l => l.StartDateTime);
 
@@ -191,7 +191,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             var lecs = _phoenixContext.Lecture.
                 Include(l => l.Course).
-                Where(l => l.Course.StudentCourse.Any(sc => sc.Student.AspNetUser.FacebookId == userFbId) && l.Course.School.FacebookPageId == schoolFbId
+                Where(l => l.Course.StudentCourse.Any(sc => sc.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId)) && l.Course.School.FacebookPageId == schoolFbId
                     && l.StartDateTime.Date > grNow.Date && l.StartDateTime.Date <= grNow.AddDays(7).Date).
                 OrderBy(l => l.StartDateTime).
                 AsEnumerable();

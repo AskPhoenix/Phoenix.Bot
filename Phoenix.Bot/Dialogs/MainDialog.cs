@@ -71,7 +71,7 @@ namespace Phoenix.Bot.Dialogs
             bool isAuthenticated = await isAuthAcsr.GetAsync(stepContext.Context);
             if (isAuthenticated)
             {
-                isAuthenticated &= _phoenixContext.AspNetUsers.Any(u => u.FacebookId == stepContext.Context.Activity.From.Id);
+                isAuthenticated &= _phoenixContext.AspNetUsers.Any(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id));
                 if (!isAuthenticated)
                     await isAuthAcsr.SetAsync(stepContext.Context, false);
             }
@@ -112,13 +112,21 @@ namespace Phoenix.Bot.Dialogs
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
             var user = _phoenixContext.UserSchool.
                 Include(us => us.AspNetUser).
-                SingleOrDefault(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId && us.AspNetUser.OneTimeCode == code).
+                Include(us => us.AspNetUser.AspNetUserLogins).
+                SingleOrDefault(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId && us.AspNetUser.AspNetUserLogins.Any(l => l.OneTimeCode == code && l.UserId == us.AspNetUserId)).
                 AspNetUser;
 
             user.User.TermsAccepted = acceptedTerms;
-            user.FacebookId = stepContext.Context.Activity.From.Id;
-            if (!string.IsNullOrEmpty(code))
-                user.OneTimeCodeUsed = true;
+            user.AspNetUserLogins.Add(
+                new AspNetUserLogins()
+                {
+                    LoginProvider = LoginProvider.Facebook.GetProviderName(),
+                    ProviderKey = stepContext.Context.Activity.From.Id,
+                    OTCUsed = !string.IsNullOrEmpty(code),
+                    UserId = user.Id,
+                    CreatedAt = DateTimeOffset.Now
+                });
+            
             await _phoenixContext.SaveChangesAsync();
 
             await _conversationState.CreateProperty<bool>("NeedsWelcoming").SetAsync(stepContext.Context, true);
@@ -156,7 +164,7 @@ namespace Phoenix.Bot.Dialogs
                 contentType: "image/gif");
             await stepContext.Context.SendActivityAsync(reply);
 
-            var name = _phoenixContext.User.Single(u => u.AspNetUser.FacebookId == stepContext.Context.Activity.From.Id).FirstName;
+            var name = _phoenixContext.User.Single(u => u.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).FirstName;
             reply = MessageFactory.Text($"Γεια σου {Greek.NameVocative(name)}! 😊");
             await stepContext.Context.SendActivityAsync(reply);
 
@@ -171,7 +179,7 @@ namespace Phoenix.Bot.Dialogs
 
             var userRoles = _phoenixContext.AspNetUsers.
                 Include(u => u.AspNetUserRoles).
-                Single(u => u.FacebookId == stepContext.Context.Activity.From.Id).
+                Single(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).
                 AspNetUserRoles.
                 Select(ur => ur.Role).
                 AsEnumerable();

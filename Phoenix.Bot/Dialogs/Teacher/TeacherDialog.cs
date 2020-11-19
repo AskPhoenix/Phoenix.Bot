@@ -100,7 +100,7 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     break;
             }
 
-            string signature = _phoenixContext.AspNetUsers.Single(u => u.FacebookId == stepContext.Context.Activity.From.Id).getHashSignature();
+            string signature = _phoenixContext.AspNetUsers.Single(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).GetHashSignature();
             signature = WebUtility.UrlEncode(signature);
             
             button.Url += $"?signature={signature}";

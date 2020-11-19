@@ -13,6 +13,7 @@ using Phoenix.DataHandle.Sms;
 using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.DataHandle.Main;
 
 namespace Phoenix.Bot.Dialogs
 {
@@ -287,7 +288,10 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(false, cancellationToken);
             }
 
-            bool codeOk = _phoenixContext.AspNetUsers.Any(u => u.OneTimeCode == result);
+            //TODO: Make key valid only for 5 mins
+            //TODO: Check and validate the phone of the user that the OTC was sent to
+            //TODO: Use channel name to validate the login provider
+            bool codeOk = _phoenixContext.AspNetUserLogins.Any(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.OneTimeCode == result);
             if (!codeOk)
                 return await stepContext.NextAsync(null, cancellationToken);
 

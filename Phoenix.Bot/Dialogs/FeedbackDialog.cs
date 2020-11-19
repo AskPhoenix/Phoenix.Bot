@@ -1,6 +1,7 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
+using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.DataHandle.Main;
@@ -72,7 +73,11 @@ namespace Phoenix.Bot.Dialogs
         {
             var botFeedback = new BotFeedback()
             {
-                AuthorId = _phoenixContext.AspNetUsers.Single(u => u.FacebookId == innerDc.Context.Activity.From.Id).Id
+                AuthorId = _phoenixContext.AspNetUserLogins.
+                    Include(l => l.User).
+                    Single(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.ProviderKey == innerDc.Context.Activity.From.Id).
+                    User.
+                    Id
             };
 
             if (Persistent.TryGetCommand(innerDc.Context.Activity.Text, out Persistent.Command cmd) && cmd == Persistent.Command.Feedback)
@@ -120,7 +125,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Τι είδους σχόλιο θα ήθελες να κάνεις;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε μία από τις παρακάτω κατηγορίες:"),
-                    Choices = ChoiceFactory.ToChoices(BotFeedbackCategoryExtensions.GetCategoryNames(includeEmoji: true))
+                    Choices = ChoiceFactory.ToChoices(BotFeedbackCategoryExtensions.GetAllGreekNames(includeEmoji: true).ToList())
                 });
         }
 
