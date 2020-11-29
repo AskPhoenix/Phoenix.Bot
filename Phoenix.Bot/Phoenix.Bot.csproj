@@ -4,8 +4,14 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ApplicationInsightsResourceId>/subscriptions/158d7265-c8df-4fbd-96df-1d003a650372/resourceGroups/PhoenixRsrcG/providers/microsoft.insights/components/Nuagesa3ypn</ApplicationInsightsResourceId>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <UserSecretsId>70734456-ea89-439b-8a3e-ae66329e51e0</UserSecretsId>
+    <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
+    <Authors>AskPhoenix</Authors>
+    <Copyright>AskPhoenix 2020</Copyright>
+    <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +23,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.10" />
     <PackageReference Include="Phoenix.Bot.Utilities" Version="1.0.10" />
-    <PackageReference Include="Phoenix.DataHandle" Version="1.5.0" />
+    <PackageReference Include="Phoenix.DataHandle" Version="1.6.3" />
   </ItemGroup>
 
     <ItemGroup>

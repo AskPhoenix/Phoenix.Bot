@@ -99,7 +99,7 @@ namespace Phoenix.Bot.Dialogs.Student
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 
             var coursesLookup = _phoenixContext.Course.
-                Where(c => c.StudentCourse.Any(sc => sc.CourseId == c.Id && sc.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId))
+                Where(c => c.StudentCourse.Any(sc => sc.CourseId == c.Id && sc.Student.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId))
                     && c.School.FacebookPageId == schoolFbId && today <= c.LastDate.Date).
                 Select(c => new { c.Name, c.Id }).
                 ToLookup(c => c.Name, c => c.Id).
@@ -254,7 +254,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 if (forPastLec)
                 {
                     grade = _phoenixContext.StudentExercise.
-                        SingleOrDefault(se => se.ExerciseId == hw.Id && se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId))?.
+                        SingleOrDefault(se => se.ExerciseId == hw.Id && se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId))?.
                         Grade;
                     card.Body.Add(new AdaptiveRichFactSetLight("Βαθμός ", grade == null ? "-" : grade.ToString(), separator: true));
                 }

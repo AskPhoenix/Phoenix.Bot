@@ -106,7 +106,7 @@ namespace Phoenix.Bot.Dialogs.Student
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
 
             var coursesLookup = _phoenixContext.Course.
-                Where(c => c.StudentCourse.Any(sc => sc.CourseId == c.Id && sc.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId))
+                Where(c => c.StudentCourse.Any(sc => sc.CourseId == c.Id && sc.Student.AspNetUserLogins.Any(l => l.ProviderKey == userFbId && l.UserId == sc.StudentId))
                     && c.School.FacebookPageId == schoolFbId && today <= c.LastDate.Date).
                 Select(c => new { c.Name, c.Id }).
                 ToLookup(c => c.Name, c => c.Id).
@@ -135,7 +135,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             bool anyExams = exams.Any();
             bool anyFutureExams = exams.Any(e => e.Lecture.EndDateTime >= CalendarExtensions.GreeceLocalTime());
-            bool anyGradedExams = exams.Any(e => e.StudentExam.Any(se => se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Exam.Id == e.Id && se.Grade != null));
+            bool anyGradedExams = exams.Any(e => e.StudentExam.Any(se => se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Exam.Id == e.Id && se.Grade != null));
 
             if (!anyExams)
             {
@@ -386,7 +386,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             var lastGradedStudentExam = _phoenixContext.StudentExam.
                 Include(se => se.Exam).
-                Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Grade != null).
+                Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Grade != null).
                 AsEnumerable().
                 Aggregate((se, lse) => se.Exam.Lecture.StartDateTime > lse.Exam.Lecture.StartDateTime ? se : lse);
 
@@ -425,7 +425,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             var grNow = CalendarExtensions.GreeceLocalTime();
             string fbId = stepContext.Context.Activity.From.Id;
-            if (_phoenixContext.StudentExam.Count(se => se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && selCourseIds.Contains(se.Exam.Lecture.CourseId) 
+            if (_phoenixContext.StudentExam.Count(se => se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && selCourseIds.Contains(se.Exam.Lecture.CourseId) 
                 && se.Exam.Lecture.EndDateTime < grNow && se.Grade != null) == 1)
             {
                 await stepContext.Context.SendActivityAsync("Αυτό ήταν το μόνο βαθμολογημένο διαγώνισμα.");
@@ -453,7 +453,7 @@ namespace Phoenix.Bot.Dialogs.Student
             string fbId = stepContext.Context.Activity.From.Id;
 
             var examDates = _phoenixContext.StudentExam.
-                Where(se => se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && selCourseIds.Contains(se.Exam.Lecture.CourseId) 
+                Where(se => se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && selCourseIds.Contains(se.Exam.Lecture.CourseId) 
                     && se.Exam.Lecture.EndDateTime < grNow && se.Grade != null).
                 Select(se => se.Exam.Lecture.StartDateTime).
                 OrderByDescending(d => d).
@@ -484,7 +484,7 @@ namespace Phoenix.Bot.Dialogs.Student
 
             var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var gradedStudentExams = _phoenixContext.StudentExam.
-                Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Grade != null);
+                Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Grade != null);
 
             var studentExam = gradedStudentExams.
                 SingleOrDefault(se => se.Exam.Lecture.StartDateTime.Date == selDate.Date);
