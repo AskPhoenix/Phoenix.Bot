@@ -16,6 +16,7 @@ using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
+using Phoenix.DataHandle.Repositories;
 
 namespace Phoenix.Bot.Dialogs
 {
@@ -23,6 +24,9 @@ namespace Phoenix.Bot.Dialogs
     {
         private readonly IConfiguration configuration;
         private readonly PhoenixContext phoenixContext;
+
+        private readonly AspNetUserRepository userRepository;
+        private readonly Repository<AspNetRoles> roleReposotory;
 
         private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
         private readonly IStatePropertyAccessor<ConversationsOptions> convOptionsAccesor;
@@ -42,6 +46,9 @@ namespace Phoenix.Bot.Dialogs
         {
             this.configuration = configuration;
             this.phoenixContext = phoenixContext;
+
+            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.roleReposotory = new Repository<AspNetRoles>(phoenixContext);
 
             this.userOptionsAccesor = userState.CreateProperty<UserOptions>("Options");
             this.convOptionsAccesor = conversationState.CreateProperty<ConversationsOptions>("Options");
@@ -85,7 +92,10 @@ namespace Phoenix.Bot.Dialogs
 
             if (userOptions.IsAuthenticated)
             {
-                if (!phoenixContext.AspNetUsers.Any(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id)))
+                LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+                string providerKey = stepContext.Context.Activity.From.Id;
+
+                if (!userRepository.AnyLogin(provider, providerKey))
                 {
                     userOptions.IsAuthenticated = false;
                     await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
@@ -176,8 +186,11 @@ namespace Phoenix.Bot.Dialogs
                 contentType: "image/gif");
             await stepContext.Context.SendActivityAsync(reply);
 
-            var name = phoenixContext.User.Single(u => u.AspNetUser.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).FirstName;
-            reply = MessageFactory.Text($"Γεια σου {Greek.NameVocative(name)}! 😊");
+            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = stepContext.Context.Activity.From.Id;
+            var user = userRepository.FindUserFromLogin(provider, providerKey);
+            
+            reply = MessageFactory.Text($"Γεια σου {Greek.NameVocative(user.User.FirstName)}! 😊");
             await stepContext.Context.SendActivityAsync(reply);
 
             return await stepContext.NextAsync(null, cancellationToken);
@@ -188,12 +201,11 @@ namespace Phoenix.Bot.Dialogs
             if (!(stepContext.Options as MainDialogOptions).CheckRole)
                 return await stepContext.NextAsync(null);
 
-            var userRoles = phoenixContext.AspNetUsers.
-                Include(u => u.AspNetUserRoles).
-                Single(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).
-                AspNetUserRoles.
-                Select(ur => ur.Role).
-                AsEnumerable();
+            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = stepContext.Context.Activity.From.Id;
+            
+            var user = userRepository.FindUserFromLogin(provider, providerKey);
+            var userRoles = userRepository.FindRoles(user);
 
             // If user has 1 role, then don't ask
             if (userRoles.Count() == 1)
@@ -223,10 +235,7 @@ namespace Phoenix.Bot.Dialogs
 
                 if (stepContext.Result is FoundChoice foundChoice)
                 {
-                    var roleSel = phoenixContext.AspNetRoles.
-                        Single(r => r.NormalizedName == foundChoice.Value).
-                        Type;
-
+                    var roleSel = (await roleReposotory.Find(r => r.NormalizedName == foundChoice.Value)).Type;
                     userOptions.Role = (int)roleSel;
                 }
                 else
