@@ -354,14 +354,14 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> SmsLeftCheckStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            int sms_left = 5 - userOptions.SmsUsed;
+            int sms_left = UserOptions.MaxSmsNumber - userOptions.SmsCount;
 
             if (sms_left > 0)
             {
                 string phone = Convert.ToInt64(stepContext.Options).ToString();
                 if (phone != "6900000000")
                 {
-                    userOptions.SmsUsed += 1;
+                    userOptions.SmsCount += 1;
                     await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
                 }
 
