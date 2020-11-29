@@ -14,15 +14,17 @@ using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.DataHandle.Main;
+using Phoenix.Bot.Utilities.State;
 
 namespace Phoenix.Bot.Dialogs
 {
     public class AuthDialog : ComponentDialog
     {
-        private readonly IConfiguration _configuration;
-        private readonly BotState _conversationState;
-        private readonly BotState _userState;
-        private readonly PhoenixContext _phoenixContext;
+        private readonly IConfiguration configuration;
+        private readonly PhoenixContext phoenixContext;
+
+        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
+        private readonly IStatePropertyAccessor<ConversationsOptions> convOptionsAccesor;
 
         private static class WaterfallNames
         {
@@ -39,13 +41,18 @@ namespace Phoenix.Bot.Dialogs
             public const string Pin = "Pin_Prompt";
         }
 
-        public AuthDialog(IConfiguration configuration, ConversationState conversationState, UserState userState, PhoenixContext phoenixContext)
+        public AuthDialog(
+            IConfiguration configuration, 
+            ConversationState conversationState,
+            UserState userState,
+            PhoenixContext phoenixContext)
             : base(nameof(AuthDialog))
         {
-            _configuration = configuration;
-            _conversationState = conversationState;
-            _userState = userState;
-            _phoenixContext = phoenixContext;
+            this.configuration = configuration;
+            this.phoenixContext = phoenixContext;
+
+            this.userOptionsAccesor = userState.CreateProperty<UserOptions>("Options");
+            this.convOptionsAccesor = conversationState.CreateProperty<ConversationsOptions>("Options");
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
@@ -106,7 +113,7 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            string schoolName = _phoenixContext.School.SingleOrDefault(s => s.FacebookPageId == stepContext.Context.Activity.Recipient.Id)?.Name;
+            string schoolName = phoenixContext.School.SingleOrDefault(s => s.FacebookPageId == stepContext.Context.Activity.Recipient.Id)?.Name;
 
             await stepContext.Context.SendActivityAsync("Καλωσόρισες στον έξυπνο βοηθό μας! 😁");
             var card = new HeroCard
@@ -170,7 +177,9 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(false);
             }
 
-            await _userState.CreateProperty<bool>("AcceptedTerms").SetAsync(stepContext.Context, true);
+            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            userOptions.HasAcceptedTerms = true;
+            await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
 
             await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να ξενικήσουμε! 😁");
             return await stepContext.NextAsync(null, cancellationToken);
@@ -201,21 +210,24 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> CheckPhoneStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            long phone = Convert.ToInt64(stepContext.Result);
+            string phone = Convert.ToInt64(stepContext.Result).ToString();
             stepContext.Values.Add("phone", phone);
 
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
-            int countUsersWithThatPhoneAtThisSchool = _phoenixContext.UserSchool.
+            int countUsersWithThatPhoneAtThisSchool = phoenixContext.UserSchool.
                 Include(us => us.AspNetUser).
-                Where(us => us.AspNetUser.PhoneNumber == phone.ToString() && us.School.FacebookPageId == schoolFbId).
+                Where(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId).
                 AsEnumerable().
                 GroupBy(us => us.AspNetUser).
                 Count();
 
             if (countUsersWithThatPhoneAtThisSchool == 0)
                 return await stepContext.NextAsync(null, cancellationToken);
-            
-            await _conversationState.CreateProperty<string>("Phone").SetAsync(stepContext.Context, phone.ToString());
+
+            var convOptions = await convOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            convOptions.Authentication = new AuthenticationOptions() { PhoneNumber = phone };
+            await convOptionsAccesor.SetAsync(stepContext.Context, convOptions, cancellationToken);
+
             if (countUsersWithThatPhoneAtThisSchool == 1)
                 return await stepContext.BeginDialogAsync(WaterfallNames.SendPin, phone, cancellationToken);
 
@@ -267,6 +279,7 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> AskCodeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            //TODO: Generate code
             var reply = MessageFactory.SuggestedActions(
                 new CardAction[] { new CardAction(ActionTypes.ImBack, "Δεν έχω κωδικό") },
                 text: "Παρακαλώ πληκτρολόγησε τον κωδικό που σου έδωσαν από το φροντιστήριο:");
@@ -288,14 +301,16 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(false, cancellationToken);
             }
 
-            //TODO: Make key valid only for 5 mins
+            //TODO: Make code valid only for 5 mins
             //TODO: Check and validate the phone of the user that the OTC was sent to
             //TODO: Use channel name to validate the login provider
-            bool codeOk = _phoenixContext.AspNetUserLogins.Any(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.OneTimeCode == result);
+            bool codeOk = phoenixContext.AspNetUserLogins.Any(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.OneTimeCode == result);
             if (!codeOk)
                 return await stepContext.NextAsync(null, cancellationToken);
 
-            await _conversationState.CreateProperty<string>("OneTimeCode").SetAsync(stepContext.Context, result);
+
+
+            //await conversationState.CreateProperty<string>("OneTimeCode").SetAsync(stepContext.Context, result);
             
             return await stepContext.BeginDialogAsync(WaterfallNames.SendPin, stepContext.Options, cancellationToken);
         }
@@ -338,14 +353,17 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> SmsLeftCheckStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var smsAcsr = _userState.CreateProperty<int>("sms_left");
-            int sms_left = await smsAcsr.GetAsync(stepContext.Context, () => 5);
+            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            int sms_left = 5 - userOptions.SmsUsed;
 
             if (sms_left > 0)
             {
                 string phone = Convert.ToInt64(stepContext.Options).ToString();
                 if (phone != "6900000000")
-                    await smsAcsr.SetAsync(stepContext.Context, sms_left - 1);
+                {
+                    userOptions.SmsUsed += 1;
+                    await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
+                }
 
                 return await stepContext.NextAsync(null, cancellationToken);
             }
@@ -363,11 +381,11 @@ namespace Phoenix.Bot.Dialogs
 
             // Avoid sending the sms with the pin when the phone is the fake one
             if (phone == "6900000000")
-                pin = Convert.ToInt32(_configuration["TestPin"]);
+                pin = Convert.ToInt32(configuration["TestPin"]);
             else
             {
                 string name = Greek.NameVocative(stepContext.Context.Activity.From.Name.Split(' ')[0]);
-                var sms = new SmsService(_configuration["NexmoSMS:ApiKey"], _configuration["NexmoSMS:ApiSecret"]);
+                var sms = new SmsService(configuration["NexmoSMS:ApiKey"], configuration["NexmoSMS:ApiSecret"]);
                 await sms.SendAsync(phone, $"Το pin σου για το Phoenix είναι το {pin}.");   //TODO: και έχει διάρκεια 5 λεπτά."
             }
             stepContext.Values.Add("pin", pin);
