@@ -150,7 +150,6 @@ namespace Phoenix.Bot.Dialogs
                 });
             }
 
-            (stepContext.Options as MainDialogOptions).NeedsWelcoming = true;
             await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
             await convOptionsAccesor.SetAsync(stepContext.Context, convOptions, cancellationToken);
 
@@ -166,9 +165,8 @@ namespace Phoenix.Bot.Dialogs
             switch (cmd)
             {
                 case Persistent.Command.GetStarted:
-                    (stepContext.Options as MainDialogOptions).CheckRole = true;
-                    return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
                 case Persistent.Command.Tutorial:
+                    (stepContext.Options as MainDialogOptions).UserWelcomed = true;
                     return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
                 case Persistent.Command.Feedback:
                     return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), null, cancellationToken);
@@ -200,7 +198,7 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> MultiRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (!(stepContext.Options as MainDialogOptions).CheckRole)
+            if ((stepContext.Options as MainDialogOptions).RoleChecked)
                 return await stepContext.NextAsync(null);
 
             LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
@@ -229,9 +227,9 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> MultiRoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if ((stepContext.Options as MainDialogOptions).CheckRole)
+            if (!(stepContext.Options as MainDialogOptions).RoleChecked)
             {
-                (stepContext.Options as MainDialogOptions).CheckRole = false;
+                (stepContext.Options as MainDialogOptions).RoleChecked = true;
 
                 var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
 
@@ -247,9 +245,9 @@ namespace Phoenix.Bot.Dialogs
                 //await userState.SaveChangesAsync(stepContext.Context);
             }
 
-            if ((stepContext.Options as MainDialogOptions).NeedsWelcoming)
+            if (!(stepContext.Options as MainDialogOptions).UserWelcomed)
             {
-                (stepContext.Options as MainDialogOptions).NeedsWelcoming = false;
+                (stepContext.Options as MainDialogOptions).UserWelcomed = true;
                 return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
             }
             
