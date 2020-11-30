@@ -126,6 +126,7 @@ namespace Phoenix.Bot.Dialogs
             convOptions.Authentication = null;
 
             //TODO: Needs revision
+            //TODO: Remove OneTimeCode related columns from DB
             //This is for the students and their parents who have registered with the same phone number
             string schoolFbId = stepContext.Context.Activity.Recipient.Id;
             var user = phoenixContext.UserSchool.
@@ -135,18 +136,19 @@ namespace Phoenix.Bot.Dialogs
                 AspNetUser;
 
             user.User.TermsAccepted = true;
-            //TODO: Remove OneTimeCode related columns from DB
-            user.AspNetUserLogins.Add(
-                new AspNetUserLogins()
-                {
-                    LoginProvider = LoginProvider.Facebook.GetProviderName(),
-                    ProviderKey = stepContext.Context.Activity.From.Id,
-                    OTCUsed = !string.IsNullOrEmpty(code),
-                    UserId = user.Id,
-                    CreatedAt = DateTimeOffset.Now
-                });
-            
             await phoenixContext.SaveChangesAsync();
+
+            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = stepContext.Context.Activity.From.Id;
+            if (!userRepository.AnyLogin(provider, providerKey))
+            {
+                userRepository.LinkLogin(new AspNetUserLogins()
+                {
+                    LoginProvider = provider.GetProviderName(),
+                    ProviderKey = providerKey,
+                    UserId = user.Id
+                });
+            }
 
             (stepContext.Options as MainDialogOptions).NeedsWelcoming = true;
             await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
