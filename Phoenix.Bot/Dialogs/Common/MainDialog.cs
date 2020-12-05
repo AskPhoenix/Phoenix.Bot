@@ -17,8 +17,9 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
+using Phoenix.Bot.Dialogs.Common.Authentication;
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Common
 {
     public class MainDialog : ComponentDialog
     {

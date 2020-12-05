@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 #pragma warning disable CS8509
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Common
 {
     public class FeedbackDialog : ComponentDialog
     {

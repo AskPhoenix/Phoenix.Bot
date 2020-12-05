@@ -16,7 +16,7 @@ using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.DataHandle.Main;
 using Phoenix.Bot.Utilities.State;
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Common.Authentication
 {
     public class AuthDialog : ComponentDialog
     {
@@ -62,9 +62,6 @@ namespace Phoenix.Bot.Dialogs
             AddDialog(new WaterfallDialog(WaterfallNames.Main,
                 new WaterfallStep[]
                 {
-                    IntroStepAsync,
-                    TermsStepAsync,
-                    TermsReplyStepAsync,
                     SignInStepAsync,
                     FinalStepAsync
                 }));
@@ -110,80 +107,6 @@ namespace Phoenix.Bot.Dialogs
         }
 
         #region Main Waterfall Dialog
-
-        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            string schoolName = phoenixContext.School.SingleOrDefault(s => s.FacebookPageId == stepContext.Context.Activity.Recipient.Id)?.Name;
-
-            await stepContext.Context.SendActivityAsync("Καλωσόρισες στον έξυπνο βοηθό μας! 😁");
-            var card = new HeroCard
-            {
-                Title = schoolName ?? "AskPhoenix",
-                Text = "Πάτησε ή πληκτρολόγησε \"Σύνδεση\" για να ξεκινήσουμε!",
-                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.askphoenix.gr"),
-                Buttons = new List<CardAction>
-                {
-                    new CardAction(ActionTypes.ImBack, title: "🔓 Σύνδεση", value: "🔓 Σύνδεση"),
-                    new CardAction(ActionTypes.OpenUrl, title: "🦜 Περισσότερα...", value: "https://www.askphoenix.gr")
-                }
-            };
-
-            var reply = (Activity)MessageFactory.Attachment(card.ToAttachment());
-            return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt),
-                new PromptOptions
-                {
-                    Prompt = reply,
-                    RetryPrompt = reply,
-                    Choices = new Choice[] { new Choice("🔓 Σύνδεση") },
-                    Style = ListStyle.None
-                }, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> TermsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var card = new HeroCard
-            {
-                Title = "Όροι Παροχής Υπηρεσίας",
-                Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης.",
-                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html"),
-                Buttons = new List<CardAction>
-                {
-                    new CardAction(ActionTypes.ImBack, title: "✔️ Συμφωνώ", value: "✔️ Συμφωνώ"),
-                    new CardAction(ActionTypes.ImBack, title: "❌ Διαφωνώ", value: "❌ Διαφωνώ"),
-                    new CardAction(ActionTypes.OpenUrl, title: "📖 Ανάγνωση...", value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html")
-                }
-            };
-
-            var reply = (Activity)MessageFactory.Attachment(card.ToAttachment());
-            return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt),
-                new PromptOptions
-                {
-                    Prompt = reply,
-                    RetryPrompt = reply,
-                    Choices = new Choice[] { new Choice("✔️ Συμφωνώ"), new Choice("❌ Διαφωνώ") },
-                    Style = ListStyle.None
-                }, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> TermsReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 1)
-            {
-                await stepContext.Context.SendActivityAsync("Λυπάμαι, αλλά θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης " +
-                    "ώστε να χρησιμοποιήσεις τις υπηρεσίες του AskPhoenix.");
-                return await stepContext.EndDialogAsync(false);
-            }
-
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            userOptions.HasAcceptedTerms = true;
-            await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
-
-            await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να ξενικήσουμε! 😁");
-            return await stepContext.NextAsync(null, cancellationToken);
-        }
 
         private async Task<DialogTurnResult> SignInStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -354,7 +277,7 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> SmsLeftCheckStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            int sms_left = UserOptions.MaxSmsNumber - userOptions.SmsCount;
+            int sms_left = UserOptionsDefaults.MaxSmsNumber - userOptions.SmsCount;
 
             if (sms_left > 0)
             {

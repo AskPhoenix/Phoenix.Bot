@@ -2,6 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
+using Phoenix.Bot.Dialogs.Common;
 using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;

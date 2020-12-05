@@ -10,7 +10,7 @@ using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Common
 {
     public class WelcomeDialog : ComponentDialog
     {
