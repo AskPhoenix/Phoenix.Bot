@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="AdaptiveCards" Version="2.3.0" />
-    <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.9.8" />
+    <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.9.9" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.16.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.11.1" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.11.1" />
