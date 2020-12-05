@@ -39,7 +39,6 @@ namespace Phoenix.Bot.Dialogs.Common
             InitialDialogId = WaterfallNames.BuildWaterfallName(wfIntroduction);
         }
 
-
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             string schoolName = (await this.schoolRepository.Find(s => s.FacebookPageId == stepContext.Context.Activity.Recipient.Id))?.Name;
