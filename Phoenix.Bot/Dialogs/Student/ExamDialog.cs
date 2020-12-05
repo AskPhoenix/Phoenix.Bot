@@ -368,10 +368,14 @@ namespace Phoenix.Bot.Dialogs.Student
             }
 
             string dayArticle = Greek.DayArticle(exam.Lecture.StartDateTime.DayOfWeek);
-            await stepContext.Context.SendActivityAsync($"Για το διαγώνισμα {dayArticle} {exam.Lecture.StartDateTime.DayOfWeek} " +
-                    $"{exam.Lecture.StartDateTime:m} στις {exam.Lecture.StartDateTime:t}" 
-                    + exam.Lecture.ClassroomId != null ? $" στην αίθουσα {exam.Lecture.Classroom.Name} " : " "
-                                                                                                           + "έχεις να διαβάσεις τα παρακάτω:");
+
+            string mess = $"Για το διαγώνισμα {dayArticle} {exam.Lecture.StartDateTime.DayOfWeek} {exam.Lecture.StartDateTime:m} στις {exam.Lecture.StartDateTime:t} ";
+            if (exam.Lecture.ClassroomId != null)
+                mess += $"στην αίθουσα {exam.Lecture.Classroom.Name} ";
+            mess += "έχεις να διαβάσεις τα παρακάτω:";
+
+            await stepContext.Context.SendActivityAsync(mess);
+
             return await stepContext.ReplaceDialogAsync(WaterfallNames.Material, exam.Id, cancellationToken);
         }
 

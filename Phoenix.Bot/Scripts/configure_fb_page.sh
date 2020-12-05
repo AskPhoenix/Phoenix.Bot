@@ -68,7 +68,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
   "greeting": [
     {
       "locale":"default",
-      "text":"Καλωσορίσατε στον ψηφιακό βοηθό του Yes Language School!"
+      "text":"Καλωσορίσατε στον ψηφιακό βοηθό του Alphabet!"
     }
   ]
 }' "https://graph.facebook.com/v7.0/me/messenger_profile?access_token=$token"
