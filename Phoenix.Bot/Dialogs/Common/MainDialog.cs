@@ -18,6 +18,7 @@ using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
 using Phoenix.Bot.Dialogs.Common.Authentication;
+using Phoenix.Bot.Utilities.State.Dialogs;
 
 namespace Phoenix.Bot.Dialogs.Common
 {
@@ -38,7 +39,7 @@ namespace Phoenix.Bot.Dialogs.Common
             UserState userState,
             PhoenixContext phoenixContext,
 
-            AuthDialog authDialog,
+            CredentialsDialog authDialog,
             WelcomeDialog welcomeDialog,
             FeedbackDialog feedbackDialog,
             StudentDialog studentDialog,
@@ -80,7 +81,7 @@ namespace Phoenix.Bot.Dialogs.Common
 
         protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
-            options ??= new MainDialogOptions();
+            options ??= new MainOptions();
 
             return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
@@ -104,7 +105,7 @@ namespace Phoenix.Bot.Dialogs.Common
             }
 
             if (!userOptions.IsAuthenticated)
-                return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
+                return await stepContext.BeginDialogAsync(nameof(CredentialsDialog), null, cancellationToken);
 
             return await stepContext.NextAsync(true, cancellationToken);
         }
@@ -167,7 +168,7 @@ namespace Phoenix.Bot.Dialogs.Common
             {
                 case Persistent.Command.GetStarted:
                 case Persistent.Command.Tutorial:
-                    (stepContext.Options as MainDialogOptions).UserWelcomed = true;
+                    (stepContext.Options as MainOptions).UserWelcomed = true;
                     return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
                 case Persistent.Command.Feedback:
                     return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), null, cancellationToken);
@@ -199,7 +200,7 @@ namespace Phoenix.Bot.Dialogs.Common
 
         private async Task<DialogTurnResult> MultiRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if ((stepContext.Options as MainDialogOptions).RoleChecked)
+            if ((stepContext.Options as MainOptions).RoleChecked)
                 return await stepContext.NextAsync(null);
 
             LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
@@ -228,9 +229,9 @@ namespace Phoenix.Bot.Dialogs.Common
 
         private async Task<DialogTurnResult> MultiRoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (!(stepContext.Options as MainDialogOptions).RoleChecked)
+            if (!(stepContext.Options as MainOptions).RoleChecked)
             {
-                (stepContext.Options as MainDialogOptions).RoleChecked = true;
+                (stepContext.Options as MainOptions).RoleChecked = true;
 
                 var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
 
@@ -246,9 +247,9 @@ namespace Phoenix.Bot.Dialogs.Common
                 //await userState.SaveChangesAsync(stepContext.Context);
             }
 
-            if (!(stepContext.Options as MainDialogOptions).UserWelcomed)
+            if (!(stepContext.Options as MainOptions).UserWelcomed)
             {
-                (stepContext.Options as MainDialogOptions).UserWelcomed = true;
+                (stepContext.Options as MainOptions).UserWelcomed = true;
                 return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
             }
             
