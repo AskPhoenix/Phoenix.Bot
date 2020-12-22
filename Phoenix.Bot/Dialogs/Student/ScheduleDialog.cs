@@ -89,8 +89,6 @@ namespace Phoenix.Bot.Dialogs.Student
             }
             else
             {
-                await stepContext.Context.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
-
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 card.BackgroundImage = new AdaptiveBackgroundImage("https://www.bot.askphoenix.gr/assets/4f5d75_sq.png");
                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"Πρόγραμμα - {date:dddd} {date.Day}/{date.Month}"));
@@ -202,8 +200,6 @@ namespace Phoenix.Bot.Dialogs.Student
             }
             else
             {
-                await stepContext.Context.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
-
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 card.BackgroundImage = new AdaptiveBackgroundImage("https://www.bot.askphoenix.gr/assets/4f5d75_sq.png");
                 card.Body.Add(new AdaptiveTextBlockHeaderLight("Εβδομαδιαίο Πρόγραμμα"));
