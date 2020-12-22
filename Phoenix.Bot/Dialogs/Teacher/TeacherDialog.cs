@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -103,7 +104,7 @@ namespace Phoenix.Bot.Dialogs.Teacher
             string signature = _phoenixContext.AspNetUsers.Single(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).GetHashSignature();
             signature = WebUtility.UrlEncode(signature);
             
-            button.Url += $"?signature={signature}";
+            button.Url += $"?signature={signature}&t={DateTime.Now:yyyyMMddHHmmss}";
 
             var taskCard = new GenericTemplate()
             {
