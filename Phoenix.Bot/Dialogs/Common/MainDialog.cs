@@ -63,7 +63,7 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(studentDialog);
             AddDialog(teacherDialog);
 
-            AddDialog(new WaterfallDialog(MainWaterfallNames.Main,
+            AddDialog(new WaterfallDialog(WaterfallNames.Main.Top,
                 new WaterfallStep[]
                 {
                     FirstTimeStepAsync,
@@ -76,7 +76,7 @@ namespace Phoenix.Bot.Dialogs.Common
                     LoopStepAsync
                 }));
 
-            InitialDialogId = MainWaterfallNames.Main;
+            InitialDialogId = WaterfallNames.Main.Top;
         }
 
         protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
