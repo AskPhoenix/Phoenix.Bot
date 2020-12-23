@@ -49,7 +49,6 @@ namespace Phoenix.Bot.Bots
             if (resetConversation)
                 await ConversationState.ClearStateAsync(turnContext, cancellationToken);
 
-            //await turnContext.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
             await Dialog.RunAsync(turnContext, ConversationState.CreateProperty<DialogState>(nameof(DialogState)), cancellationToken);
         }
     }

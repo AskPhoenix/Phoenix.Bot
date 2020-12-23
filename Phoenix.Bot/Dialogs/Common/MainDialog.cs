@@ -134,7 +134,7 @@ namespace Phoenix.Bot.Dialogs.Common
             var user = phoenixContext.UserSchool.
                 Include(us => us.AspNetUser).
                 Include(us => us.AspNetUser.AspNetUserLogins).
-                SingleOrDefault(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId && us.AspNetUser.AspNetUserLogins.Any(l => l.OneTimeCode == code && l.UserId == us.AspNetUserId)).
+                Single(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId).
                 AspNetUser;
 
             user.User.TermsAccepted = true;
@@ -148,7 +148,8 @@ namespace Phoenix.Bot.Dialogs.Common
                 {
                     LoginProvider = provider.GetProviderName(),
                     ProviderKey = providerKey,
-                    UserId = user.Id
+                    UserId = user.Id,
+                    OTCUsed = false
                 });
             }
 
