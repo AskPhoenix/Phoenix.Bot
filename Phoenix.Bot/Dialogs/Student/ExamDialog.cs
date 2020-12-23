@@ -237,8 +237,6 @@ namespace Phoenix.Bot.Dialogs.Student
             int matShownCount = page * pageSize;
             foreach (var mat in paginatedMat)
             {
-                await stepContext.Context.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
-
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 card.BackgroundImage = new AdaptiveBackgroundImage("https://www.bot.askphoenix.gr/assets/4f5d75_sq.png");
                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"Ύλη {++matShownCount} - {examDate:dddd} {examDate.Day}/{examDate.Month}"));
@@ -411,8 +409,6 @@ namespace Phoenix.Bot.Dialogs.Student
 
             if (grade >= 0.0m)
             {
-                await stepContext.Context.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
-
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 card.BackgroundImage = new AdaptiveBackgroundImage("https://www.bot.askphoenix.gr/assets/4f5d75_sq.png");
                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"--- {grade:G29} ---") { HorizontalAlignment = AdaptiveHorizontalAlignment.Center });

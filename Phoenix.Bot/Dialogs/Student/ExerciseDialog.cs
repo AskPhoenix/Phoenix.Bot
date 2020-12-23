@@ -241,8 +241,6 @@ namespace Phoenix.Bot.Dialogs.Student
             int hwShownCount = page * pageSize;
             foreach (var hw in paginatedHw)
             {
-                await stepContext.Context.SendActivityAsync(new Activity(type: ActivityTypes.Typing));
-
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2));
                 card.BackgroundImage = new AdaptiveBackgroundImage("https://www.bot.askphoenix.gr/assets/4f5d75_sq.png");
                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"Εργασία {++hwShownCount}η - {lecDate:dddd} {lecDate.Day}/{lecDate.Month}"));
