@@ -17,8 +17,7 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
-using Phoenix.Bot.Dialogs.Common.Authentication;
-using Phoenix.Bot.Utilities.State.Dialogs;
+using Phoenix.Bot.Utilities.State.DialogOptions;
 
 namespace Phoenix.Bot.Dialogs.Common
 {
@@ -39,7 +38,7 @@ namespace Phoenix.Bot.Dialogs.Common
             UserState userState,
             PhoenixContext phoenixContext,
 
-            CredentialsDialog authDialog,
+            IntroductionDialog introductionDialog,
             WelcomeDialog welcomeDialog,
             FeedbackDialog feedbackDialog,
             StudentDialog studentDialog,
@@ -52,12 +51,12 @@ namespace Phoenix.Bot.Dialogs.Common
             this.userRepository = new AspNetUserRepository(phoenixContext);
             this.roleReposotory = new Repository<AspNetRoles>(phoenixContext);
 
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>("Options");
-            this.convOptionsAccesor = conversationState.CreateProperty<ConversationsOptions>("Options");
+            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
+            this.convOptionsAccesor = conversationState.CreateProperty<ConversationsOptions>(ConversationDefaults.PropertyName);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
-            AddDialog(authDialog);
+            AddDialog(introductionDialog);
             AddDialog(welcomeDialog);
             AddDialog(feedbackDialog);
             AddDialog(studentDialog);
@@ -105,7 +104,7 @@ namespace Phoenix.Bot.Dialogs.Common
             }
 
             if (!userOptions.IsAuthenticated)
-                return await stepContext.BeginDialogAsync(nameof(CredentialsDialog), null, cancellationToken);
+                return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
 
             return await stepContext.NextAsync(true, cancellationToken);
         }
@@ -123,9 +122,9 @@ namespace Phoenix.Bot.Dialogs.Common
             userOptions.IsAuthenticated = true;
 
             var convOptions = await convOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            string phone = convOptions.Authentication?.PhoneNumber;
-            string code = convOptions.Authentication?.OTC;
-            convOptions.Authentication = null;
+            string phone = ""; //convOptions.Authentication?.PhoneNumber;
+            string code = ""; //convOptions.Authentication?.OTC;
+            //convOptions.Authentication = null;
 
             //TODO: Needs revision
             //TODO: Remove OneTimeCode related columns from DB
@@ -148,8 +147,7 @@ namespace Phoenix.Bot.Dialogs.Common
                 {
                     LoginProvider = provider.GetProviderName(),
                     ProviderKey = providerKey,
-                    UserId = user.Id,
-                    OTCUsed = false
+                    UserId = user.Id
                 });
             }
 

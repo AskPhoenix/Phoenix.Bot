@@ -2,6 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
+using Phoenix.Bot.Dialogs.Common.Authentication;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
@@ -18,25 +19,31 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly SchoolRepository schoolRepository;
         private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
 
-        private const string wfIntroduction = "Introduction";
-
-        public IntroductionDialog(PhoenixContext phoenixContext, UserState userState)
+        public IntroductionDialog(
+            PhoenixContext phoenixContext, 
+            UserState userState, 
+            
+            AuthDialog authDialog
+            )
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserOptionsDefaults.PropertyName);
+            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.BuildWaterfallName(wfIntroduction),
+            AddDialog(authDialog);
+
+            AddDialog(new WaterfallDialog(WaterfallNames.Introduction.Top,
                 new WaterfallStep[]
                 {
                     IntroStepAsync,
                     TermsStepAsync,
                     TermsReplyStepAsync,
+                    EndStepAsync
                 }));
 
-            InitialDialogId = WaterfallNames.BuildWaterfallName(wfIntroduction);
+            InitialDialogId = WaterfallNames.Introduction.Top;
         }
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -109,7 +116,12 @@ namespace Phoenix.Bot.Dialogs.Common
             userOptions.HasAcceptedTerms = true;
             await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
 
-            await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να ξενικήσουμε! 😁");
+            await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
+            return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
             return await stepContext.EndDialogAsync(true, cancellationToken);
         }
     }
