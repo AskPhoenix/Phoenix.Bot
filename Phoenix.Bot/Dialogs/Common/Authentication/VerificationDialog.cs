@@ -51,7 +51,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
         protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
             if (options is not AuthenticationOptions authenticationOptions)
-                return innerDc.EndDialogAsync(new AuthenticationOptions() { Verified = false });
+                return innerDc.EndDialogAsync(false);
 
             InitialDialogId = authenticationOptions.IsOwnerVerification 
                 ? WaterfallNames.Auth.Verification.SendCode 
@@ -69,8 +69,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
             if (userOptions.SmsCount < UserDefaults.MaxSmsNumber)
             {
-                string phone = authenticationOptions.Phone;
-                if (phone != "6900000000")
+                if (authenticationOptions.Phone != "6900000000")
                 {
                     userOptions.SmsCount += 1;
                     await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
@@ -82,8 +81,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             await stepContext.Context.SendActivityAsync("Δυστυχώς έχεις υπερβεί το όριο μηνυμάτων επαλήθευσης.");
             await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για να συνεχίσεις.");
 
-            authenticationOptions.Verified = false;
-            return await stepContext.EndDialogAsync(authenticationOptions, cancellationToken);
+            return await stepContext.EndDialogAsync(false, cancellationToken);
         }
 
         private async Task<DialogTurnResult> SendCodeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -137,10 +135,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
         private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var authenticationOptions = stepContext.Options as AuthenticationOptions;
-            authenticationOptions.Verified = (bool)stepContext.Result;
-
-            return await stepContext.EndDialogAsync(authenticationOptions, cancellationToken);
+            return await stepContext.EndDialogAsync(stepContext.Result, cancellationToken);
         }
 
         #endregion
@@ -151,7 +146,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
         {
             string validationType = InitialDialogId == WaterfallNames.Auth.Verification.CheckCode ? "code" : "pin";
             string promptMessage = InitialDialogId == WaterfallNames.Auth.Verification.CheckCode
-                ? "Παρακαλώ πληκτρολόγησε τον κωδικό επαλήθευσης που σου έδωσε ο γονέας σου:"
+                ? "Παρακαλώ πληκτρολόγησε τον κωδικό επαλήθευσης που σου έδωσε ο ιδιοκτήτης του αριθμού:"
                 : "Ωραία! Παρακαλώ πληκτρολόγησε το pin που έλαβες παρακάτω:";
 
             return await stepContext.PromptAsync(
@@ -174,7 +169,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             bool valid = false;
             if (stepContext.Options is AuthenticationOptions authenticationOptions && !authenticationOptions.IsOwnerVerification)
                 valid = authenticationOptions.Codes.Contains(result);
-            if (stepContext.Options is string pin)
+            else if (stepContext.Options is string pin)
                 valid = result == pin;
 
             if (valid)

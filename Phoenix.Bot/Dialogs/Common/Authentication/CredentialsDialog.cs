@@ -90,9 +90,9 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             {
                 if (phoneUsers.Count() > 1 && !providerKeyBelongsToOwner)
                 {
-                    await stepContext.Context.SendActivityAsync("Υπενθυμίζεται πως η πρώτη σύνδεση πρέπει να γίνει από τον γονέα.");
+                    await stepContext.Context.SendActivityAsync("Υπενθυμίζεται πως η πρώτη σύνδεση πρέπει να γίνει από τον ιδιοκτήτη του αριθμού.");
                     return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt), 
-                        new YesNoPromptOptions("Είμαι γονέας και επιθυμώ να συνεχίσω:"), cancellationToken);
+                        new YesNoPromptOptions("Ο αριθμός ανήκει σε εμένα και επιθυμώ να συνεχίσω:"), cancellationToken);
                 }
 
                 authenticationOptions.IsOwnerVerification = true;
@@ -100,39 +100,43 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             }
 
             //Verify another member
-            var phoneMember = phoneUsers.
-                SingleOrDefault(u => u.AspNetUserLogins.Any(l => l.LoginProvider == activity.ChannelId.ToUpper() && l.ProviderKey == activity.From.Id));
-
-            authenticationOptions.Codes = phoneUsers.Where(u => !u.User.IsSelfDetermined).Select(u => u.User.IdentifierCode).ToArray();
+            authenticationOptions.Codes = phoneUsers.
+                Where(u => !u.User.IsSelfDetermined).
+                Select(u => u.User.IdentifierCode).
+                ToArray();
             authenticationOptions.IsOwnerVerification = false;
             return await stepContext.BeginDialogAsync(nameof(VerificationDialog), authenticationOptions, cancellationToken);
         }
 
         private async Task<DialogTurnResult> ConfirmationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (stepContext.Result is AuthenticationOptions)
+            if (stepContext.Result is bool)
                 return await stepContext.NextAsync(stepContext.Result, cancellationToken);
 
+            var authenticationOptions = stepContext.Options as AuthenticationOptions;
             var foundChoice = stepContext.Result as FoundChoice;
+
             if (foundChoice.Index == 0)
             {
                 await stepContext.Context.SendActivityAsync("Εντάξει, ας συνεχίσουμε!");
 
-                var verificationOptions = new AuthenticationOptions()
-                {
-                    IsOwnerVerification = true,
-                    Phone = (stepContext.Options as AuthenticationOptions).Phone
-                };
-                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), verificationOptions, cancellationToken);
+                authenticationOptions.IsOwnerVerification = true;
+                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), authenticationOptions, cancellationToken);
             }
             
-            await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του γονέα για να ενεργοποιηθούν οι συνδέσεις για τους μαθητές.");
-            return await stepContext.EndDialogAsync(false, cancellationToken);
+            await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του ιδιοκτήτη του αριθμού, ώστε ενεργοποιηθούν" +
+                " οι συνδέσεις των υπόλοιπων μελών.");
+
+            authenticationOptions.Verified = false;
+            return await stepContext.EndDialogAsync(authenticationOptions, cancellationToken);
         }
 
         private async Task<DialogTurnResult> PostVerificationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.EndDialogAsync((stepContext.Result as AuthenticationOptions).Verified, cancellationToken);
+            var authenticationOptions = stepContext.Options as AuthenticationOptions;
+            authenticationOptions.Verified = (bool)stepContext.Result;
+
+            return await stepContext.EndDialogAsync(authenticationOptions, cancellationToken);
         }
 
         #endregion
