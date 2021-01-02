@@ -9,7 +9,6 @@ using Phoenix.Bot.Dialogs.Teacher;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
 using Phoenix.DataHandle.Main;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Linguistic;
@@ -66,7 +65,6 @@ namespace Phoenix.Bot.Dialogs.Common
                 new WaterfallStep[]
                 {
                     FirstTimeStepAsync,
-                    UserRegisterStepAsync,
                     CommandHandleStepAsync,
                     GreetingStepAsync,
                     MultiRoleStepAsync,
@@ -91,71 +89,21 @@ namespace Phoenix.Bot.Dialogs.Common
         {
             var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
 
-            if (userOptions.IsAuthenticated)
+            if (!userOptions.IsAuthenticated)
             {
                 LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
                 string providerKey = stepContext.Context.Activity.From.Id;
 
-                if (!userRepository.AnyLogin(provider, providerKey))
+                if (userRepository.AnyLogin(provider, providerKey, onlyActive: true))
                 {
-                    userOptions.IsAuthenticated = false;
+                    userOptions.IsAuthenticated = true;
                     await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
                 }
+                else
+                    return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
             }
-
-            if (!userOptions.IsAuthenticated)
-                return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
 
             return await stepContext.NextAsync(true, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> UserRegisterStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            if (!(stepContext.Result is bool) || !(bool)stepContext.Result)
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
-
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            if (userOptions.IsAuthenticated)
-                return await stepContext.NextAsync(null, cancellationToken);
-            if (!userOptions.HasAcceptedTerms)
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
-            userOptions.IsAuthenticated = true;
-
-            var convOptions = await convOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            string phone = ""; //convOptions.Authentication?.PhoneNumber;
-            string code = ""; //convOptions.Authentication?.OTC;
-            //convOptions.Authentication = null;
-
-            //TODO: Needs revision
-            //TODO: Remove OneTimeCode related columns from DB
-            //This is for the students and their parents who have registered with the same phone number
-            string schoolFbId = stepContext.Context.Activity.Recipient.Id;
-            var user = phoenixContext.UserSchool.
-                Include(us => us.AspNetUser).
-                Include(us => us.AspNetUser.AspNetUserLogins).
-                Single(us => us.AspNetUser.PhoneNumber == phone && us.School.FacebookPageId == schoolFbId).
-                AspNetUser;
-
-            user.User.TermsAccepted = true;
-            await phoenixContext.SaveChangesAsync();
-
-            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            string providerKey = stepContext.Context.Activity.From.Id;
-            if (!userRepository.AnyLogin(provider, providerKey))
-            {
-                userRepository.LinkLogin(new AspNetUserLogins()
-                {
-                    LoginProvider = provider.GetProviderName(),
-                    ProviderKey = providerKey,
-                    UserId = user.Id
-                });
-            }
-
-            await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
-            await convOptionsAccesor.SetAsync(stepContext.Context, convOptions, cancellationToken);
-
-            //await conversationState.SaveChangesAsync(stepContext.Context);
-            return await stepContext.NextAsync(null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> CommandHandleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

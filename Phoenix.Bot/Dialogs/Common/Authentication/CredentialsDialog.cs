@@ -12,6 +12,7 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.DataHandle.Repositories;
 using Microsoft.Bot.Schema;
 using Microsoft.Bot.Builder.Dialogs.Choices;
+using Phoenix.DataHandle.Main;
 
 namespace Phoenix.Bot.Dialogs.Common.Authentication
 {
@@ -80,7 +81,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             }
 
             var ownerLogins = phoneOwner.AspNetUserLogins?.
-                Where(l => l.LoginProvider == activity.ChannelId.ToUpper());
+                Where(l => l.LoginProvider == activity.ChannelId.ToLoginProvider().GetProviderName());
 
             //False means that it is unknown whom the current user is (it could be the owner)
             bool providerKeyBelongsToOwner = ownerLogins?.Any(l => l.ProviderKey == activity.From.Id) ?? false;

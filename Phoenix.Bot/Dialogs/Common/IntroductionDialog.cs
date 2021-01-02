@@ -19,12 +19,8 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly SchoolRepository schoolRepository;
         private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
 
-        public IntroductionDialog(
-            PhoenixContext phoenixContext, 
-            UserState userState, 
-            
-            AuthDialog authDialog
-            )
+        public IntroductionDialog(PhoenixContext phoenixContext, UserState userState,
+            AuthDialog authDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
@@ -122,7 +118,7 @@ namespace Phoenix.Bot.Dialogs.Common
 
         private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.EndDialogAsync(true, cancellationToken);
+            return await stepContext.EndDialogAsync(stepContext.Result, cancellationToken);
         }
     }
 }
