@@ -19,7 +19,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
         public AuthDialog(IConfiguration configuration, PhoenixContext phoenixContext,
             CredentialsDialog credentialsDialog)
-            : base(nameof(CredentialsDialog))
+            : base(nameof(AuthDialog))
         {
             this.configuration = configuration;
             this.userRepository = new AspNetUserRepository(phoenixContext);
@@ -68,8 +68,6 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
                 };
 
                 userRepository.LinkLogin(login);
-
-                //await stepContext.Context.SendActivityAsync("Η σύνδεση ολοκληρώθηκε επιτυχώς!");
             }
             
             return await stepContext.EndDialogAsync(authenticationOptions.Verified, cancellationToken);

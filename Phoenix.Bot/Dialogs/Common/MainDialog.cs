@@ -23,41 +23,24 @@ namespace Phoenix.Bot.Dialogs.Common
     public class MainDialog : ComponentDialog
     {
         private readonly IConfiguration configuration;
-        private readonly PhoenixContext phoenixContext;
+        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
 
         private readonly AspNetUserRepository userRepository;
-        private readonly Repository<AspNetRoles> roleReposotory;
+        private readonly Repository<AspNetRoles> roleRepository;
 
-        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
-        private readonly IStatePropertyAccessor<ConversationsOptions> convOptionsAccesor;
-
-        public MainDialog(
-            IConfiguration configuration,
-            ConversationState conversationState,
-            UserState userState,
-            PhoenixContext phoenixContext,
-
-            IntroductionDialog introductionDialog,
-            WelcomeDialog welcomeDialog,
-            FeedbackDialog feedbackDialog,
-            StudentDialog studentDialog,
-            TeacherDialog teacherDialog) 
+        public MainDialog(IConfiguration configuration, PhoenixContext phoenixContext, UserState userState,
+            IntroductionDialog introductionDialog, StudentDialog studentDialog, TeacherDialog teacherDialog) 
             : base(nameof(MainDialog))
         {
             this.configuration = configuration;
-            this.phoenixContext = phoenixContext;
+            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
 
             this.userRepository = new AspNetUserRepository(phoenixContext);
-            this.roleReposotory = new Repository<AspNetRoles>(phoenixContext);
-
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
-            this.convOptionsAccesor = conversationState.CreateProperty<ConversationsOptions>(ConversationDefaults.PropertyName);
+            this.roleRepository = new Repository<AspNetRoles>(phoenixContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(introductionDialog);
-            AddDialog(welcomeDialog);
-            AddDialog(feedbackDialog);
             AddDialog(studentDialog);
             AddDialog(teacherDialog);
 
@@ -67,8 +50,8 @@ namespace Phoenix.Bot.Dialogs.Common
                     FirstTimeStepAsync,
                     CommandHandleStepAsync,
                     GreetingStepAsync,
-                    MultiRoleStepAsync,
-                    MultiRoleSelectStepAsync,
+                    RoleStepAsync,
+                    RoleSelectStepAsync,
                     ForwardStepAsync,
                     LoopStepAsync
                 }));
@@ -83,7 +66,7 @@ namespace Phoenix.Bot.Dialogs.Common
             return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
-        #region Main Waterfall Dialog
+        #region Top Waterfall Dialog
 
         private async Task<DialogTurnResult> FirstTimeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -145,10 +128,10 @@ namespace Phoenix.Bot.Dialogs.Common
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
-        private async Task<DialogTurnResult> MultiRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> RoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             if ((stepContext.Options as MainOptions).RoleChecked)
-                return await stepContext.NextAsync(null);
+                return await stepContext.NextAsync(null, cancellationToken);
 
             LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
             string providerKey = stepContext.Context.Activity.From.Id;
@@ -156,13 +139,10 @@ namespace Phoenix.Bot.Dialogs.Common
             var user = userRepository.FindUserFromLogin(provider, providerKey);
             var userRoles = userRepository.FindRoles(user);
 
-            // If user has 1 role, then don't ask
             if (userRoles.Count() == 1)
-                return await stepContext.NextAsync(userRoles.First().Type);
-            // If user has multiple non-contradictious roles (e.g. Teacher, Owner), then don't ask and select the hierarchly highest one
+                return await stepContext.NextAsync(userRoles.Single().Type, cancellationToken);
             if (userRoles.All(r => r.Type >= Role.Teacher))
-                return await stepContext.NextAsync(userRoles.Max(r => r.Type));
-            // If user has multiple roles and the include Student or Teacher, meaning they are contradictious, then ask which one they prefer
+                return await stepContext.NextAsync(userRoles.Max(r => r.Type), cancellationToken);
 
             return await stepContext.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
@@ -174,31 +154,19 @@ namespace Phoenix.Bot.Dialogs.Common
                 });
         }
 
-        private async Task<DialogTurnResult> MultiRoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> RoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (!(stepContext.Options as MainOptions).RoleChecked)
-            {
-                (stepContext.Options as MainOptions).RoleChecked = true;
+            if ((stepContext.Options as MainOptions).RoleChecked)
+                return await stepContext.NextAsync(null, cancellationToken);
 
-                var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            Role role = stepContext.Result is FoundChoice foundChoice
+                ? (await roleRepository.Find(r => r.NormalizedName == foundChoice.Value)).Type
+                : role = (Role)stepContext.Result;
 
-                if (stepContext.Result is FoundChoice foundChoice)
-                {
-                    var roleSel = (await roleReposotory.Find(r => r.NormalizedName == foundChoice.Value)).Type;
-                    userOptions.Role = (int)roleSel;
-                }
-                else
-                    userOptions.Role = (int)stepContext.Result;
-
-                await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
-                //await userState.SaveChangesAsync(stepContext.Context);
-            }
-
-            if (!(stepContext.Options as MainOptions).UserWelcomed)
-            {
-                (stepContext.Options as MainOptions).UserWelcomed = true;
-                return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
-            }
+            (stepContext.Options as MainOptions).RoleChecked = true;
+            userOptions.Role = (int)role;
+            await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
             
             return await stepContext.NextAsync(null, cancellationToken);
         }

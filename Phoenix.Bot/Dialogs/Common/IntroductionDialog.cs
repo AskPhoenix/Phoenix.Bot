@@ -20,7 +20,7 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
 
         public IntroductionDialog(PhoenixContext phoenixContext, UserState userState,
-            AuthDialog authDialog)
+            AuthDialog authDialog, WelcomeDialog welcomeDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
@@ -29,6 +29,7 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(authDialog);
+            AddDialog(welcomeDialog);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Introduction.Top,
                 new WaterfallStep[]
@@ -36,6 +37,7 @@ namespace Phoenix.Bot.Dialogs.Common
                     IntroStepAsync,
                     TermsStepAsync,
                     TermsReplyStepAsync,
+                    WelcomeStepAsync,
                     EndStepAsync
                 }));
 
@@ -116,9 +118,14 @@ namespace Phoenix.Bot.Dialogs.Common
             return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
         }
 
+        private async Task<DialogTurnResult> WelcomeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
+        }
+
         private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.EndDialogAsync(stepContext.Result, cancellationToken);
+            return await stepContext.EndDialogAsync(null, cancellationToken);
         }
     }
 }
