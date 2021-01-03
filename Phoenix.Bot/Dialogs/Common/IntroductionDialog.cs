@@ -37,6 +37,7 @@ namespace Phoenix.Bot.Dialogs.Common
                     IntroStepAsync,
                     TermsStepAsync,
                     TermsReplyStepAsync,
+                    WelcomeAskStepAsync,
                     WelcomeStepAsync,
                     EndStepAsync
                 }));
@@ -118,9 +119,25 @@ namespace Phoenix.Bot.Dialogs.Common
             return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
         }
 
+        private async Task<DialogTurnResult> WelcomeAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Προτού ξεκινήσουμε, θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"));
+        }
+
         private async Task<DialogTurnResult> WelcomeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
+            var foundChoice = stepContext.Result as FoundChoice;
+            if (foundChoice.Index == 0)
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁"));
+                return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
+            }
+
+            var reply = MessageFactory.Text("Έγινε, κανένα πρόβλημα! Ας ξεκινήσουμε λοιπόν!");
+            await stepContext.Context.SendActivityAsync(reply);
+
+            return await stepContext.NextAsync(null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
