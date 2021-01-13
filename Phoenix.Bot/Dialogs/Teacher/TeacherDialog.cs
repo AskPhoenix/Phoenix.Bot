@@ -58,9 +58,6 @@ namespace Phoenix.Bot.Dialogs.Teacher
             {
                 string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 8);
                 var passResult = await userManager.AddPasswordAsync(appUser, password);
-                
-                //if (!passResult.Succeeded)
-                //    await innerDc.Context.SendActivityAsync(passResult.Errors.First().Description);
 
                 await innerDc.Context.SendActivityAsync("Ο παρακάτω κωδικός θα χρειαστεί κατά την πρώτη σύνδεση, ενώ στη συνέχεια μπορείς να τον αλλάξεις:");
                 await innerDc.Context.SendActivityAsync(password);

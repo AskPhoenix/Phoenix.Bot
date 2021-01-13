@@ -62,6 +62,7 @@ namespace Phoenix.Bot
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequiredLength = 6;
+                options.User.AllowedUserNameCharacters = null;
             }).AddUserStore<ApplicationStore>().AddUserManager<UserManager<ApplicationUser>>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
 
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
