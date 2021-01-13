@@ -1,5 +1,6 @@
 using Bot.Builder.Community.Storage.EntityFramework;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Student;
 using Phoenix.Bot.Dialogs.Teacher;
+using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using System.Globalization;
 
@@ -53,6 +55,16 @@ namespace Phoenix.Bot
             services.AddControllers();
             services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
+            services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+            {
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequiredLength = 6;
+            }).AddUserStore<ApplicationStore>().AddUserManager<UserManager<ApplicationUser>>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
+
+            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
             services.AddDbContext<PhoenixContext>(options => options.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
         }
 

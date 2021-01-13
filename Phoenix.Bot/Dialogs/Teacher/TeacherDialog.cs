@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
@@ -10,13 +10,18 @@ using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.DataHandle.Identity;
+using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Repositories;
 
 namespace Phoenix.Bot.Dialogs.Teacher
 {
     public class TeacherDialog : ComponentDialog
     {
-        private readonly PhoenixContext _phoenixContext;
+        private readonly UserManager<ApplicationUser> userManager;
+        private readonly AspNetUserRepository userRepository;
+        private readonly ApplicationStore appStore;
 
         private static class WaterfallNames
         {
@@ -24,10 +29,12 @@ namespace Phoenix.Bot.Dialogs.Teacher
             public const string Help = "Teacher_Help_WaterfallDialog";
         }
 
-        public TeacherDialog(PhoenixContext phoenixContext)
+        public TeacherDialog(UserManager<ApplicationUser> userManager, PhoenixContext phoenixContext, ApplicationDbContext appContext)
             : base(nameof(TeacherDialog))
         {
-            _phoenixContext = phoenixContext;
+            this.userManager = userManager;
+            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.appStore = new ApplicationStore(appContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new WaterfallDialog(WaterfallNames.Menu,
@@ -39,6 +46,27 @@ namespace Phoenix.Bot.Dialogs.Teacher
                 }));
 
             InitialDialogId = WaterfallNames.Menu;
+        }
+
+        protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
+        {
+            LoginProvider provider = innerDc.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = innerDc.Context.Activity.From.Id;
+            var appUser = await appStore.FindByProviderKeyAsync(provider, providerKey);
+
+            if (appUser != null && !await userManager.HasPasswordAsync(appUser))
+            {
+                string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 8);
+                var passResult = await userManager.AddPasswordAsync(appUser, password);
+                
+                //if (!passResult.Succeeded)
+                //    await innerDc.Context.SendActivityAsync(passResult.Errors.First().Description);
+
+                await innerDc.Context.SendActivityAsync("Ο παρακάτω κωδικός θα χρειαστεί κατά την πρώτη σύνδεση, ενώ στη συνέχεια μπορείς να τον αλλάξεις:");
+                await innerDc.Context.SendActivityAsync(password);
+            }
+
+            return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
         #region Teacher Menu Waterfall Dialog
@@ -101,7 +129,10 @@ namespace Phoenix.Bot.Dialogs.Teacher
                     break;
             }
 
-            string signature = _phoenixContext.AspNetUsers.Single(u => u.AspNetUserLogins.Any(l => l.ProviderKey == stepContext.Context.Activity.From.Id && l.UserId == u.Id)).GetHashSignature();
+            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = stepContext.Context.Activity.From.Id;
+
+            string signature = userRepository.FindUserFromLogin(provider, providerKey).GetHashSignature();
             signature = WebUtility.UrlEncode(signature);
             
             button.Url += $"?signature={signature}&t={DateTime.Now:yyyyMMddHHmmss}";
