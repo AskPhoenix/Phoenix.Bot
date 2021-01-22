@@ -89,6 +89,7 @@ namespace Phoenix.Bot.Dialogs.Common
             return await stepContext.NextAsync(true, cancellationToken);
         }
 
+
         private async Task<DialogTurnResult> CommandHandleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             if (!Persistent.TryGetCommand(stepContext.Context.Activity.Text, out Persistent.Command cmd))
