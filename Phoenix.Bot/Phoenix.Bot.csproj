@@ -15,15 +15,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdaptiveCards" Version="2.3.0" />
+    <PackageReference Include="AdaptiveCards" Version="2.4.0" />
     <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.9.9" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.16.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.11.1" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.11.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.11" />
     <PackageReference Include="Phoenix.Bot.Utilities" Version="1.0.11" />
-    <PackageReference Include="Phoenix.DataHandle" Version="1.6.12" />
+    <PackageReference Include="Phoenix.DataHandle" Version="1.8.1" />
   </ItemGroup>
 
     <ItemGroup>

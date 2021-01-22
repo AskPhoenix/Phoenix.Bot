@@ -227,11 +227,11 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             //TODO: Make code valid only for 5 mins
             //TODO: Check and validate the phone of the user that the OTC was sent to
             //TODO: Use channel name to validate the login provider
-            bool codeOk = phoenixContext.AspNetUserLogins.Any(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.OneTimeCode == result);
+
+            //bool codeOk = phoenixContext.AspNetUserLogins.Any(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.OneTimeCode == result);
+            bool codeOk = false; // Use of OTC is outdated
             if (!codeOk)
                 return await stepContext.NextAsync(null, cancellationToken);
-
-
 
             //await conversationState.CreateProperty<string>("OneTimeCode").SetAsync(stepContext.Context, result);
             

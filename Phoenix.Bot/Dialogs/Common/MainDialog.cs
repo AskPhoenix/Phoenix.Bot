@@ -147,8 +147,7 @@ namespace Phoenix.Bot.Dialogs.Common
                 {
                     LoginProvider = provider.GetProviderName(),
                     ProviderKey = providerKey,
-                    UserId = user.Id,
-                    OTCUsed = false
+                    UserId = user.Id
                 });
             }
 
