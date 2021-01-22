@@ -11,6 +11,7 @@ using Phoenix.Bot.Adapters;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs.Common;
 using Phoenix.Bot.Dialogs.Common.Authentication;
+using Phoenix.Bot.Dialogs.Parent;
 using Phoenix.Bot.Dialogs.Student;
 using Phoenix.Bot.Dialogs.Teacher;
 using Phoenix.DataHandle.Identity;
@@ -52,6 +53,8 @@ namespace Phoenix.Bot
             services.AddScoped<ScheduleDialog>();
 
             services.AddScoped<TeacherDialog>();
+
+            services.AddScoped<ParentDialog>();
 
             services.AddTransient<IBot, DialogBot<MainDialog>>();
 

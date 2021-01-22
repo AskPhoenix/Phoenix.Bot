@@ -17,6 +17,7 @@ using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
 using Phoenix.Bot.Utilities.State.DialogOptions;
+using Phoenix.Bot.Dialogs.Parent;
 
 namespace Phoenix.Bot.Dialogs.Common
 {
@@ -29,7 +30,7 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly Repository<AspNetRoles> roleRepository;
 
         public MainDialog(IConfiguration configuration, PhoenixContext phoenixContext, UserState userState,
-            IntroductionDialog introductionDialog, StudentDialog studentDialog, TeacherDialog teacherDialog) 
+            IntroductionDialog introductionDialog, StudentDialog studentDialog, TeacherDialog teacherDialog, ParentDialog parentDialog)
             : base(nameof(MainDialog))
         {
             this.configuration = configuration;
@@ -43,6 +44,7 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(introductionDialog);
             AddDialog(studentDialog);
             AddDialog(teacherDialog);
+            AddDialog(parentDialog);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Main.Top,
                 new WaterfallStep[]
@@ -179,6 +181,7 @@ namespace Phoenix.Bot.Dialogs.Common
             return (Role)userOptions.Role switch
             {
                 Role.Student => await stepContext.BeginDialogAsync(nameof(StudentDialog), null, cancellationToken),
+                Role.Parent => await stepContext.BeginDialogAsync(nameof(ParentDialog), null, cancellationToken),
                 var r when r >= Role.Teacher => await stepContext.BeginDialogAsync(nameof(TeacherDialog), null, cancellationToken),
                 _ => await stepContext.CancelAllDialogsAsync(cancellationToken)
             };
