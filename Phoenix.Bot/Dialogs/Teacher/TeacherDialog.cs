@@ -65,8 +65,11 @@ namespace Phoenix.Bot.Dialogs.Teacher
 
             //TODO: Set PhoneNumberConfirmed during authentication
             var user = userRepository.FindUserFromLogin(provider, providerKey);
-            user.PhoneNumberConfirmed = true;
-            userRepository.Update(user);
+            if (user != null)
+            {
+                user.PhoneNumberConfirmed = true;
+                userRepository.Update(user);
+            }
 
             return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
