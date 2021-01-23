@@ -9,21 +9,22 @@ using Phoenix.DataHandle.Main;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.State;
+using Phoenix.Bot.Utilities.State.Options;
 
 namespace Phoenix.Bot.Dialogs.Common
 {
-    public class WelcomeDialog : ComponentDialog
+    public class HelpDialog : ComponentDialog
     {
-        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
+        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
 
-        public WelcomeDialog(UserState userState)
-            : base(nameof(WelcomeDialog))
+        public HelpDialog(UserState userState)
+            : base(nameof(HelpDialog))
         {
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
+            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Welcome.Tutorial,
+            AddDialog(new WaterfallDialog(WaterfallNames.Help.Tutorial,
                 new WaterfallStep[]
                 {
                     TutorialTopicsStepAsync,
@@ -32,15 +33,30 @@ namespace Phoenix.Bot.Dialogs.Common
                     FinalStepAsync
                 }));
 
-            InitialDialogId = WaterfallNames.Welcome.Tutorial;
+            AddDialog(new WaterfallDialog(WaterfallNames.Help.Ask,
+                new WaterfallStep[]
+                {
+                    HelpAskStepAsync,
+                    HelpReplyStepAsync,
+                }));
+
+            InitialDialogId = WaterfallNames.Help.Tutorial;
+        }
+
+        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
+        {
+            if (options is HelpOptions helpOptions && helpOptions != null && helpOptions.AskForTutorial)
+                InitialDialogId = WaterfallNames.Help.Ask;
+
+            return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
         #region Tutorial Waterfall Dialog
 
         private async Task<DialogTurnResult> TutorialTopicsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            bool isStudent = (Role)userOptions.Role == Role.Student;
+            var userData = await userDataAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            bool isStudent = (Role)userData.Role == Role.Student;
 
             var cards = new List<Attachment>(2)
             {
@@ -96,8 +112,8 @@ namespace Phoenix.Bot.Dialogs.Common
             reply.Text = "Οι υπηρεσίες που παρέχει εμφανίζονται παρακάτω εν συντομία:";
             await stepContext.Context.SendActivityAsync(reply);
 
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            Role roleSel = (Role)userOptions.Role;
+            var userData = await userDataAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            Role roleSel = (Role)userData.Role;
             bool isStudent = roleSel == Role.Student;
 
             var cards = new List<Attachment>(4)
@@ -175,11 +191,36 @@ namespace Phoenix.Bot.Dialogs.Common
         {
             var foundChoice = stepContext.Result as FoundChoice;
             if (foundChoice.Index == 0)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Welcome.Tutorial, stepContext.Options, cancellationToken);
+                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Tutorial, stepContext.Options, cancellationToken);
 
             await stepContext.Context.SendActivityAsync("Ελπίζω η περιήγηση να σου φάνηκε χρήσιμη! 😊");
             await stepContext.Context.SendActivityAsync("Aν έχεις απορίες σχετικά με κάποια δυνατότητα, μπορείς να πληκτρολογήσεις \"Βοήθεια\".");
             return await stepContext.EndDialogAsync(null, cancellationToken);
+        }
+
+        #endregion
+
+        #region Ask Waterfall Dialog
+
+        private async Task<DialogTurnResult> HelpAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"));
+        }
+
+        private async Task<DialogTurnResult> HelpReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var foundChoice = stepContext.Result as FoundChoice;
+            if (foundChoice.Index == 0)
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁"));
+                return await stepContext.BeginDialogAsync(WaterfallNames.Help.Tutorial, null, cancellationToken);
+            }
+
+            var reply = MessageFactory.Text("Έγινε, κανένα πρόβλημα!");
+            await stepContext.Context.SendActivityAsync(reply);
+
+            return await stepContext.NextAsync(null, cancellationToken);
         }
 
         #endregion

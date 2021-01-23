@@ -6,6 +6,7 @@ using Phoenix.Bot.Dialogs.Common.Authentication;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
+using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
 using System.Collections.Generic;
@@ -17,14 +18,16 @@ namespace Phoenix.Bot.Dialogs.Common
     public class IntroductionDialog : ComponentDialog
     {
         private readonly SchoolRepository schoolRepository;
-        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
+        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
+        private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
 
-        public IntroductionDialog(PhoenixContext phoenixContext, UserState userState,
-            AuthDialog authDialog, WelcomeDialog welcomeDialog)
+        public IntroductionDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
+            AuthDialog authDialog, HelpDialog welcomeDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
+            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
+            this.mainStateAccesor = conversationState.CreateProperty<MainState>(nameof(MainState));
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
@@ -38,7 +41,6 @@ namespace Phoenix.Bot.Dialogs.Common
                     TermsStepAsync,
                     TermsReplyStepAsync,
                     WelcomeAskStepAsync,
-                    WelcomeStepAsync,
                     EndStepAsync
                 }));
 
@@ -111,9 +113,9 @@ namespace Phoenix.Bot.Dialogs.Common
                 return await stepContext.EndDialogAsync(false, cancellationToken);
             }
 
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            userOptions.HasAcceptedTerms = true;
-            await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
+            var userData = await userDataAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
+            userData.HasAcceptedTerms = true;
+            await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
 
             await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
@@ -121,23 +123,11 @@ namespace Phoenix.Bot.Dialogs.Common
 
         private async Task<DialogTurnResult> WelcomeAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
-                new YesNoPromptOptions("Προτού ξεκινήσουμε, θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"));
-        }
+            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+            mainState.UserWelcomed = true;
+            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
 
-        private async Task<DialogTurnResult> WelcomeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
-            {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁"));
-                return await stepContext.BeginDialogAsync(nameof(WelcomeDialog), null, cancellationToken);
-            }
-
-            var reply = MessageFactory.Text("Έγινε, κανένα πρόβλημα! Ας ξεκινήσουμε λοιπόν!");
-            await stepContext.Context.SendActivityAsync(reply);
-
-            return await stepContext.NextAsync(null, cancellationToken);
+            return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions() { AskForTutorial = true }, cancellationToken);
         }
 
         private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

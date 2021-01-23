@@ -40,13 +40,14 @@ namespace Phoenix.Bot
             services.AddSingleton<ConversationState>();
 
             services.AddScoped<MainDialog>();
-            services.AddScoped<IntroductionDialog>();
-            services.AddScoped<WelcomeDialog>();
+            services.AddScoped<HelpDialog>();
             services.AddScoped<FeedbackDialog>();
 
+            services.AddScoped<IntroductionDialog>();
+            services.AddScoped<AuthDialog>();
             services.AddScoped<CredentialsDialog>();
             services.AddScoped<VerificationDialog>();
-
+            
             services.AddScoped<StudentDialog>();
             services.AddScoped<ExerciseDialog>();
             services.AddScoped<ExamDialog>();

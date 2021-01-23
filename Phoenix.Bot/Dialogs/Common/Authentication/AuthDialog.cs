@@ -4,11 +4,11 @@ using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Dialogs;
 using System.Threading.Tasks;
 using System.Threading;
-using Phoenix.Bot.Utilities.State.DialogOptions;
 using Phoenix.DataHandle.Repositories;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
 using Phoenix.DataHandle.Main;
+using Phoenix.Bot.Utilities.State.Options;
 
 namespace Phoenix.Bot.Dialogs.Common.Authentication
 {

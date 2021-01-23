@@ -7,12 +7,12 @@ using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.State.DialogOptions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.DataHandle.Repositories;
 using Microsoft.Bot.Schema;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.DataHandle.Main;
+using Phoenix.Bot.Utilities.State.Options;
 
 namespace Phoenix.Bot.Dialogs.Common.Authentication
 {

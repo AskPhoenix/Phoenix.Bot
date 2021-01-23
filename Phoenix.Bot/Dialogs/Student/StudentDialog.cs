@@ -3,11 +3,12 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Dialogs.Common;
+using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Channels.Facebook;
 using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Linguistic;
-using Phoenix.DataHandle.Main;
+using Phoenix.Bot.Utilities.State.Options;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -17,12 +18,6 @@ namespace Phoenix.Bot.Dialogs.Student
 {
     public class StudentDialog : ComponentDialog
     {
-        private static class WaterfallNames
-        {
-            public const string Menu = "Student_Menu_WaterfallDialog";
-            public const string Help = "Student_Help_WaterfallDialog";
-        }
-
         public StudentDialog(FeedbackDialog feedbackDialog, ExerciseDialog exerciseDialog, ExamDialog examDialog, ScheduleDialog scheduleDialog)
             : base(nameof(StudentDialog))
         {
@@ -33,16 +28,16 @@ namespace Phoenix.Bot.Dialogs.Student
             AddDialog(examDialog);
             AddDialog(scheduleDialog);
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Menu,
+            AddDialog(new WaterfallDialog(WaterfallNames.Student.Home,
                 new WaterfallStep[]
                 {
                     MenuStepAsync,
-                    TaskStepAsync,
+                    ActionStepAsync,
                     FeedbackStepAsync,
                     LoopStepAsync
                 }));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Help,
+            AddDialog(new WaterfallDialog(WaterfallNames.Student.Help,
                 new WaterfallStep[] 
                 {
                     HelpTopicsStepAsync,
@@ -50,29 +45,25 @@ namespace Phoenix.Bot.Dialogs.Student
                     AfterTopicStepAsync,
                     FinalHelpStepAsync
                 }));
+
+            InitialDialogId = WaterfallNames.Student.Home;
         }
 
         protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
-            string mess = innerDc.Context.Activity.Text;
-            InitialDialogId = mess.ContainsSynonyms(Synonyms.Topics.Help) ? WaterfallNames.Help : WaterfallNames.Menu;
+            if ((options as StudentOptions).Action == StudentAction.Help)
+                InitialDialogId = WaterfallNames.Student.Help;
 
             return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
-        #region Student Menu Waterfall Dialog
+        #region Home Waterfall Dialog
 
         private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (stepContext.Options is int index)
-                return await stepContext.NextAsync(
-                    new FoundChoice() 
-                    {
-                        Index = index,
-                        Value = index switch { 0 => "Εργασίες", 1 => "Διαγωνίσματα", 2 => "Πρόγραμμα", _ => string.Empty },
-                        Score = 1.0f
-                    },
-                    cancellationToken);
+            var studentOptions = stepContext.Options as StudentOptions;
+            if (studentOptions.Action != StudentAction.NoAction)
+                return await stepContext.NextAsync(null, cancellationToken);
 
             return await stepContext.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
@@ -80,44 +71,46 @@ namespace Phoenix.Bot.Dialogs.Student
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω απαντήσεις:"),
-                    Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", "📅 Πρόγραμμα", "💪 Βοήθεια" })
+                    Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", "📅 Πρόγραμμα", "💪 Βοήθεια", "👍 Κάνε ένα σχόλιο" })
                 },
                 cancellationToken);
         }
 
-        private async Task<DialogTurnResult> TaskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            stepContext.Values.Add("selTaskInd", foundChoice.Index.ToString());
+            var studentOptions = stepContext.Options as StudentOptions;
+            if (stepContext.Result is FoundChoice foundChoice)
+                studentOptions.Action = (StudentAction)(foundChoice.Index + 1);
 
-            return foundChoice.Index switch
+            return studentOptions.Action switch
             {
-                0 => await stepContext.BeginDialogAsync(nameof(ExerciseDialog), null, cancellationToken),
-                1 => await stepContext.BeginDialogAsync(nameof(ExamDialog), null, cancellationToken),
-                2 => await stepContext.BeginDialogAsync(nameof(ScheduleDialog), null, cancellationToken),
-                3 => await stepContext.BeginDialogAsync(WaterfallNames.Help, null, cancellationToken),      //Never called from here
-                _ => await stepContext.NextAsync(null, cancellationToken)
+                StudentAction.Exercises     => await stepContext.BeginDialogAsync(nameof(ExerciseDialog), null, cancellationToken),
+                StudentAction.Exams         => await stepContext.BeginDialogAsync(nameof(ExamDialog), null, cancellationToken),
+                StudentAction.Schedule      => await stepContext.BeginDialogAsync(nameof(ScheduleDialog), null, cancellationToken),
+                StudentAction.Help          => await stepContext.BeginDialogAsync(WaterfallNames.Student.Help, null, cancellationToken),
+                StudentAction.Feedback      => await stepContext.BeginDialogAsync(nameof(FeedbackDialog), new FeedbackOptions() { TriggerAction = "Menu" }, cancellationToken),
+                _                           => await stepContext.CancelAllDialogsAsync(cancellationToken)
             };
         }
 
         private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            // 1/3 possibility to ask for Feedback
-            if (new Random().Next(3) == 0)
+            var studentOptions = stepContext.Options as StudentOptions;
+            if (studentOptions.Action != StudentAction.Feedback && new Random().Next(3) == 0)
             {
-                var feedbackOccasion = (BotFeedbackOccasion)int.Parse((string)stepContext.Values["selTaskInd"]);
-                return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOccasion, cancellationToken);
+                var feedbackOptions = new FeedbackOptions() { TriggerAction = studentOptions.Action.ToString() };
+                return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
             }
 
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, stepContext.Options, cancellationToken);
+            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, new StudentOptions(), cancellationToken);
 
         #endregion
 
-        #region Student Help Waterfall Dialog
+        #region Help Waterfall Dialog
 
         private async Task<DialogTurnResult> HelpTopicsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -331,8 +324,8 @@ namespace Phoenix.Bot.Dialogs.Student
         {
             return (stepContext.Result as FoundChoice).Index switch
             {
-                0 => await stepContext.ReplaceDialogAsync(WaterfallNames.Help, stepContext.Options, cancellationToken),
-                var x when x >= 2 => await stepContext.ReplaceDialogAsync(WaterfallNames.Menu, x - 2, cancellationToken),
+                0 => await stepContext.ReplaceDialogAsync(WaterfallNames.Student.Help, stepContext.Options, cancellationToken),
+                var x when x >= 2 => await stepContext.ReplaceDialogAsync(WaterfallNames.Student.Home, new StudentOptions() { Action = (StudentAction)(x-2) }, cancellationToken),
                 _ => await stepContext.EndDialogAsync(null, cancellationToken)
             };
         }

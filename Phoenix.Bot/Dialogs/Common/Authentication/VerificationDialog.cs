@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
-using Phoenix.Bot.Utilities.State.DialogOptions;
+using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Sms;
 using System;
 using System.Linq;
@@ -17,13 +17,13 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
     public class VerificationDialog : ComponentDialog
     {
         private readonly IConfiguration configuration;
-        private readonly IStatePropertyAccessor<UserOptions> userOptionsAccesor;
+        private readonly IStatePropertyAccessor<UserData> userDataAccessor;
 
         public VerificationDialog(IConfiguration configuration, UserState userState)
             : base(nameof(VerificationDialog))
         {
             this.configuration = configuration;
-            this.userOptionsAccesor = userState.CreateProperty<UserOptions>(UserDefaults.PropertyName);
+            this.userDataAccessor = userState.CreateProperty<UserData>(nameof(UserData));
 
             AddDialog(new TextPrompt(PromptNames.Code, PromptValidators.CodePromptValidator));
 
@@ -64,15 +64,15 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
         private async Task<DialogTurnResult> SmsLeftCheckStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+            var userData = await userDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
             var authenticationOptions = stepContext.Options as AuthenticationOptions;
 
-            if (userOptions.SmsCount < UserDefaults.MaxSmsNumber)
+            if (userData.SmsCount < UserDataDefaults.MaxSmsNumber)
             {
                 if (authenticationOptions.Phone != "6900000000")
                 {
-                    userOptions.SmsCount += 1;
-                    await userOptionsAccesor.SetAsync(stepContext.Context, userOptions, cancellationToken);
+                    userData.SmsCount += 1;
+                    await userDataAccessor.SetAsync(stepContext.Context, userData, cancellationToken);
                 }
 
                 return await stepContext.NextAsync(null, cancellationToken);
@@ -161,8 +161,8 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
         private async Task<DialogTurnResult> CheckCodeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            userOptions.LoginAttempts++;
+            var userData = await userDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
+            userData.LoginAttempts++;
 
             string result = stepContext.Result.ToString();
             
@@ -174,7 +174,7 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
 
             if (valid)
             {
-                userOptions.LoginAttempts = 0;
+                userData.LoginAttempts = 0;
                 await stepContext.Context.SendActivityAsync("Πολύ ωραία! Η σύνδεση ολοκληρώθηκε επιτυχώς! 😁");
                 return await stepContext.EndDialogAsync(true, cancellationToken);
             }
@@ -189,8 +189,8 @@ namespace Phoenix.Bot.Dialogs.Common.Authentication
             var foundChoice = stepContext.Result as FoundChoice;
             if (foundChoice.Index == 0)
             {
-                var userOptions = await userOptionsAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-                if (userOptions.LoginAttempts <= UserDefaults.MaxLoginAttempts)
+                var userData = await userDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
+                if (userData.LoginAttempts <= UserDataDefaults.MaxLoginAttempts)
                     return await stepContext.ReplaceDialogAsync(WaterfallNames.Auth.Verification.CheckCode, stepContext.Options, cancellationToken);
 
                 await stepContext.Context.SendActivityAsync("Λυπάμαι, αλλά έχεις υπερβεί τον μέγιστο αριθμό προσπαθειών.");
