@@ -82,15 +82,26 @@ namespace Phoenix.Bot.Dialogs.Student
             if (stepContext.Result is FoundChoice foundChoice)
                 studentOptions.Action = (StudentAction)(foundChoice.Index + 1);
 
-            return studentOptions.Action switch
+            switch (studentOptions.Action)
             {
-                StudentAction.Exercises     => await stepContext.BeginDialogAsync(nameof(ExerciseDialog), null, cancellationToken),
-                StudentAction.Exams         => await stepContext.BeginDialogAsync(nameof(ExamDialog), null, cancellationToken),
-                StudentAction.Schedule      => await stepContext.BeginDialogAsync(nameof(ScheduleDialog), null, cancellationToken),
-                StudentAction.Help          => await stepContext.BeginDialogAsync(WaterfallNames.Student.Help, null, cancellationToken),
-                StudentAction.Feedback      => await stepContext.BeginDialogAsync(nameof(FeedbackDialog), new FeedbackOptions() { TriggerAction = "Menu" }, cancellationToken),
-                _                           => await stepContext.CancelAllDialogsAsync(cancellationToken)
-            };
+                case StudentAction.Exercises:
+                    return await stepContext.BeginDialogAsync(nameof(ExerciseDialog), null, cancellationToken);
+                case StudentAction.Exams:
+                    return await stepContext.BeginDialogAsync(nameof(ExamDialog), null, cancellationToken);
+                case StudentAction.Schedule:
+                    return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), null, cancellationToken);
+                case StudentAction.Help:
+                    return await stepContext.BeginDialogAsync(WaterfallNames.Student.Help, null, cancellationToken);
+                case StudentAction.Feedback:
+                    var feedbackOptions = new FeedbackOptions()
+                    {
+                        BotAskedForFeedback = false,
+                        UserId = studentOptions.StudentId
+                    };
+                    return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
+                default:
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+            }
         }
 
         private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -98,7 +109,11 @@ namespace Phoenix.Bot.Dialogs.Student
             var studentOptions = stepContext.Options as StudentOptions;
             if (studentOptions.Action != StudentAction.Feedback && new Random().Next(3) == 0)
             {
-                var feedbackOptions = new FeedbackOptions() { TriggerAction = studentOptions.Action.ToString() };
+                var feedbackOptions = new FeedbackOptions() 
+                {
+                    BotAskedForFeedback = true,
+                    UserId = studentOptions.StudentId
+                };
                 return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
             }
 
@@ -106,7 +121,12 @@ namespace Phoenix.Bot.Dialogs.Student
         }
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, new StudentOptions(), cancellationToken);
+        {
+            var studentOptions = stepContext.Options as StudentOptions;
+            studentOptions.Action = StudentAction.NoAction;
+
+            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, studentOptions, cancellationToken);
+        }
 
         #endregion
 

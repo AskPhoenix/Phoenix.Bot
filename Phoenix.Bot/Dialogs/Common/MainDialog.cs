@@ -139,8 +139,14 @@ namespace Phoenix.Bot.Dialogs.Common
             var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
 
+            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            string providerKey = stepContext.Context.Activity.From.Id;
+            var user = userRepository.FindUserFromLogin(provider, providerKey);
+            if (user == null)
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+
             //TODO: Generalize for all Roles
-            var studentOptions = new StudentOptions();
+            var studentOptions = new StudentOptions() { StudentId = user.Id };
             if (conversationData.Command >= (Command)30)
                 studentOptions.Action = (StudentAction)(conversationData.Command - 30 + 1);
             

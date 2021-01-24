@@ -24,6 +24,13 @@ namespace Phoenix.Bot.Dialogs.Common
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
+            AddDialog(new WaterfallDialog(WaterfallNames.Help.Ask,
+               new WaterfallStep[]
+               {
+                    HelpAskStepAsync,
+                    HelpReplyStepAsync,
+               }));
+
             AddDialog(new WaterfallDialog(WaterfallNames.Help.Tutorial,
                 new WaterfallStep[]
                 {
@@ -33,23 +40,42 @@ namespace Phoenix.Bot.Dialogs.Common
                     FinalStepAsync
                 }));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Help.Ask,
-                new WaterfallStep[]
-                {
-                    HelpAskStepAsync,
-                    HelpReplyStepAsync,
-                }));
-
             InitialDialogId = WaterfallNames.Help.Tutorial;
         }
 
         protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
-            if (options is HelpOptions helpOptions && helpOptions != null && helpOptions.AskForTutorial)
+            var helpOptions = options as HelpOptions;
+            if (helpOptions.AskForTutorial)
                 InitialDialogId = WaterfallNames.Help.Ask;
 
             return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
+
+        #region Ask Waterfall Dialog
+
+        private async Task<DialogTurnResult> HelpAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"));
+        }
+
+        private async Task<DialogTurnResult> HelpReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var foundChoice = stepContext.Result as FoundChoice;
+            if (foundChoice.Index == 0)
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁"));
+                return await stepContext.BeginDialogAsync(WaterfallNames.Help.Tutorial, null, cancellationToken);
+            }
+
+            var reply = MessageFactory.Text("Έγινε, κανένα πρόβλημα!");
+            await stepContext.Context.SendActivityAsync(reply);
+
+            return await stepContext.NextAsync(null, cancellationToken);
+        }
+
+        #endregion
 
         #region Tutorial Waterfall Dialog
 
@@ -196,31 +222,6 @@ namespace Phoenix.Bot.Dialogs.Common
             await stepContext.Context.SendActivityAsync("Ελπίζω η περιήγηση να σου φάνηκε χρήσιμη! 😊");
             await stepContext.Context.SendActivityAsync("Aν έχεις απορίες σχετικά με κάποια δυνατότητα, μπορείς να πληκτρολογήσεις \"Βοήθεια\".");
             return await stepContext.EndDialogAsync(null, cancellationToken);
-        }
-
-        #endregion
-
-        #region Ask Waterfall Dialog
-
-        private async Task<DialogTurnResult> HelpAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
-                new YesNoPromptOptions("Θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"));
-        }
-
-        private async Task<DialogTurnResult> HelpReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
-            {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁"));
-                return await stepContext.BeginDialogAsync(WaterfallNames.Help.Tutorial, null, cancellationToken);
-            }
-
-            var reply = MessageFactory.Text("Έγινε, κανένα πρόβλημα!");
-            await stepContext.Context.SendActivityAsync(reply);
-
-            return await stepContext.NextAsync(null, cancellationToken);
         }
 
         #endregion

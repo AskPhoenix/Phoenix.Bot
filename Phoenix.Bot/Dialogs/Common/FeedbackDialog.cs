@@ -1,122 +1,96 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Microsoft.EntityFrameworkCore;
-using Phoenix.Bot.Utilities.Channels.Facebook;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
-using System.Collections.Generic;
+using Phoenix.DataHandle.Repositories;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-#pragma warning disable CS8509
 
 namespace Phoenix.Bot.Dialogs.Common
 {
     public class FeedbackDialog : ComponentDialog
     {
-        private readonly PhoenixContext _phoenixContext;
-        private readonly BotState _conversationState;
+        private readonly Repository<BotFeedback> feedbackRepository;
 
-        private readonly IStatePropertyAccessor<BotFeedback> _botFeedback;
-
-        private static class WaterfallNames
-        {
-            public const string Spontaneous = "FeedbackSpontaneous_WaterfallDialog";
-            public const string Triggered   = "FeedbackTriggered_WaterfallDialog";
-            public const string Comment     = "FeedbackComment_WaterfallDialog";
-            public const string Rating      = "FeedbackRating_WaterfallDialog";
-        }
-
-        public FeedbackDialog(PhoenixContext phoenixContext, ConversationState conversationState)
+        public FeedbackDialog(PhoenixContext phoenixContext)
             : base(nameof(FeedbackDialog))
         {
-            _phoenixContext = phoenixContext;
-            _conversationState = conversationState;
-            _botFeedback = _conversationState.CreateProperty<BotFeedback>("BotFeedback");
+            this.feedbackRepository = new Repository<BotFeedback>(phoenixContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Spontaneous,
-                new WaterfallStep[] 
-                {
-                    CategoryStepAsync,
-                    RedirectStepAsync
-                }));
-
-            AddDialog(new WaterfallDialog(WaterfallNames.Triggered,
+            AddDialog(new WaterfallDialog(WaterfallNames.Feedback.Ask,
                 new WaterfallStep[]
                 {
                     AskForFeedbackStepAsync,
                     ReplyFeedbackStepAsync
                 }));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Rating,
+            AddDialog(new WaterfallDialog(WaterfallNames.Feedback.Top,
+                new WaterfallStep[] 
+                {
+                    TypeStepAsync,
+                    RedirectStepAsync,
+                    SaveStepAsync
+                }));
+
+            AddDialog(new WaterfallDialog(WaterfallNames.Feedback.Rating,
                 new WaterfallStep[]
                 {
                     RatingPromptStepAsync,
                     RatingReplyStepAsync
                 }));
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Comment,
+            AddDialog(new WaterfallDialog(WaterfallNames.Feedback.Comment,
                 new WaterfallStep[]
                 {
                     CommentPromptStepAsync,
                     CommentReplyStepAsync
                 }));
+
+            InitialDialogId = WaterfallNames.Feedback.Top;
         }
 
         protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
-            var botFeedback = new BotFeedback()
-            {
-                AuthorId = _phoenixContext.AspNetUserLogins.
-                    Include(l => l.User).
-                    Single(l => l.LoginProvider == LoginProvider.Facebook.GetProviderName() && l.ProviderKey == innerDc.Context.Activity.From.Id).
-                    User.
-                    Id
-            };
-
-            if (Persistent.TryGetCommand(innerDc.Context.Activity.Text, out Persistent.Command cmd) && cmd == Persistent.Command.Feedback)
-            {
-                botFeedback.Occasion = BotFeedbackOccasion.Persistent_Menu;
-                InitialDialogId = WaterfallNames.Spontaneous;
-            }
-            else
-            {
-                botFeedback.Occasion = (BotFeedbackOccasion)options;
-                InitialDialogId = WaterfallNames.Triggered;
-            }
-
-            await _botFeedback.SetAsync(innerDc.Context, botFeedback);
+            var feedbackOptions = options as FeedbackOptions;
+            if (feedbackOptions.BotAskedForFeedback)
+                InitialDialogId = WaterfallNames.Feedback.Ask;
 
             return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
-        protected override Task OnEndDialogAsync(ITurnContext context, DialogInstance instance, DialogReason reason, CancellationToken cancellationToken = default)
+        #region Ask Waterfall Dialog
+
+        private async Task<DialogTurnResult> AskForFeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var botFeedback = Task.Run<BotFeedback>(async () => 
-            {
-                var botFeedback = await _botFeedback.GetAsync(context);
-                await _botFeedback.DeleteAsync(context);
-                return botFeedback;
-            }).Result;
-
-            if (botFeedback.Comment != null || botFeedback.Rating != null)
-            {
-                _phoenixContext.Add(botFeedback);
-                _phoenixContext.SaveChanges();
-            }
-
-            return base.OnEndDialogAsync(context, instance, reason, cancellationToken);
+            return await stepContext.PromptAsync(
+                nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Θα ήθελες να κάνεις ένα σχόλιο για τη μέχρι τώρα εμπειρία σου στο Phoenix; 😊"),
+                cancellationToken);
         }
 
-        #region Feedback Spontaneous Waterfall Dialog
+        private async Task<DialogTurnResult> ReplyFeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var foundChoice = stepContext.Result as FoundChoice;
+            if (foundChoice.Index == 0)
+                return await stepContext.ReplaceDialogAsync(WaterfallNames.Feedback.Top, stepContext.Options, cancellationToken);
 
-        private async Task<DialogTurnResult> CategoryStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+            await stepContext.Context.SendActivityAsync("Εντάξει! Ίσως μια άλλη φορά!");
+            return await stepContext.EndDialogAsync(null, cancellationToken);
+        }
+
+        #endregion
+
+        #region Top Waterfall Dialog
+
+        private async Task<DialogTurnResult> TypeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             await stepContext.Context.SendActivityAsync("Τα σχόλιά σου είναι πολύτιμα για να γίνει το Phoenix ακόμα καλύτερο! 😁");
             return await stepContext.PromptAsync(
@@ -125,53 +99,45 @@ namespace Phoenix.Bot.Dialogs.Common
                 {
                     Prompt = MessageFactory.Text("Τι είδους σχόλιο θα ήθελες να κάνεις;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε μία από τις παρακάτω κατηγορίες:"),
-                    Choices = ChoiceFactory.ToChoices(BotFeedbackCategoryExtensions.GetAllGreekNames(includeEmoji: true).ToList())
-                });
+                    Choices = ChoiceFactory.ToChoices(BotFeedbackTypeExtensions.GetAllGreekNames(positiveOnly: true, includeEmoji: true).ToList())
+                },
+                cancellationToken);
         }
 
         private async Task<DialogTurnResult> RedirectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var selCat = (BotFeedbackCategory)(stepContext.Result as FoundChoice).Index;
+            var type = (BotFeedbackType)((stepContext.Result as FoundChoice).Index + 1);
+            stepContext.Values.Add("type", type.ToFriendlyString());
 
-            var botFeedback = await _botFeedback.GetAsync(stepContext.Context);
-            botFeedback.Category = selCat;
-            await _botFeedback.SetAsync(stepContext.Context, botFeedback);
-
-            if (selCat == BotFeedbackCategory.Rating)
-                return await stepContext.BeginDialogAsync(WaterfallNames.Rating, null, cancellationToken);
+            if (type == BotFeedbackType.Rating)
+                return await stepContext.BeginDialogAsync(WaterfallNames.Feedback.Rating, null, cancellationToken);
             
-            return await stepContext.BeginDialogAsync(WaterfallNames.Comment, selCat, cancellationToken);
+            return await stepContext.BeginDialogAsync(WaterfallNames.Feedback.Comment, type, cancellationToken);
         }
 
-        #endregion
-
-        #region Feedback Triggered Waterfall Dialog
-
-        private async Task<DialogTurnResult> AskForFeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> SaveStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt),
-                new PromptOptions
-                {
-                    Prompt = MessageFactory.Text("Θα ήθελες να κάνεις ένα σχόλιο για τη μέχρι τώρα εμπειρία σου στο Phoenix; 😊"),
-                    RetryPrompt = MessageFactory.Text("Παρακαλώ απάντησε με ένα Ναι ή Όχι:"),
-                    Choices = new Choice[] { new Choice("✔️ Ναι"), new Choice("❌ Όχι, ευχαριστώ") { Synonyms = new List<string> { "Όχι" } } }
-                });
-        }
+            var feedbackOptions = stepContext.Options as FeedbackOptions;
+            BotFeedback botFeedback = new BotFeedback()
+            {
+                AuthorId = feedbackOptions.UserId,
+                AskTriggered = feedbackOptions.BotAskedForFeedback,
+                Type = (string)stepContext.Values["type"]
+            };
 
-        private async Task<DialogTurnResult> ReplyFeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
-                return await stepContext.BeginDialogAsync(WaterfallNames.Comment, BotFeedbackCategory.Comment, cancellationToken);
+            if (stepContext.Result is byte ratingResult)
+                botFeedback.Rating = ratingResult;
+            else if (stepContext.Result is string commentResult)
+                botFeedback.Comment = commentResult;
 
-            await stepContext.Context.SendActivityAsync("Εντάξει! Ίσως μια άλλη φορά!");
+            feedbackRepository.Create(botFeedback);
+
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
 
         #endregion
 
-        #region Feedback Rating Waterfall Dialog
+        #region Rating Waterfall Dialog
 
         private async Task<DialogTurnResult> RatingPromptStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -182,50 +148,48 @@ namespace Phoenix.Bot.Dialogs.Common
                     Prompt = MessageFactory.Text("Πώς με βαθμολογείς;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ένα από τα παρακάτω εικονίδια:"),
                     Choices = ChoiceFactory.ToChoices(new string[] { "😍", "😄", "🙂", "😐", "😒" })
-                });
+                },
+                cancellationToken);
         }
 
         private async Task<DialogTurnResult> RatingReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var botFeedback = await _botFeedback.GetAsync(stepContext.Context);
-            botFeedback.Rating = (byte)(5 - (stepContext.Result as FoundChoice).Index);
-            await _botFeedback.SetAsync(stepContext.Context, botFeedback);
+            byte rating = (byte)(5 - (stepContext.Result as FoundChoice).Index);
 
             await stepContext.Context.SendActivityAsync("Σ' ευχαριστώ πολύ για τη βαθμολογία σου! 😊");
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepContext.EndDialogAsync(rating, cancellationToken);
         }
 
         #endregion
 
-        #region Feedback Comment Waterfall Dialog
+        #region Comment Waterfall Dialog
 
         private async Task<DialogTurnResult> CommentPromptStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var reply = (BotFeedbackCategory)stepContext.Options switch
+            string reply = (BotFeedbackType)stepContext.Options switch
             {
-                BotFeedbackCategory.Comment => MessageFactory.Text("Ωραία! Σε ακούω:"),
-                BotFeedbackCategory.Copliment => MessageFactory.Text("Τέλεια!! 😍 Ανυπομονώ να ακούσω:"),
-                BotFeedbackCategory.Suggestion => MessageFactory.Text("Ανυπομονώ να ακούσω την ιδέα σου:"),
-                BotFeedbackCategory.Complaint => MessageFactory.Text("Λυπάμαι αν σε στενοχώρησα 😢 Πες μου τι σε ενόχλησε:")
+                BotFeedbackType.Copliment   => "Τέλεια!! 😍 Ανυπομονώ να ακούσω:",
+                BotFeedbackType.Suggestion  => "Ανυπομονώ να ακούσω την ιδέα σου:",
+                BotFeedbackType.Complaint   => "Λυπάμαι αν σε στενοχώρησα 😢 Πες μου τι σε ενόχλησε:",
+                _                               => "Ωραία! Σε ακούω:"
             };
 
             return await stepContext.PromptAsync(
                 nameof(TextPrompt),
                 new PromptOptions
                 {
-                    Prompt = reply,
+                    Prompt = MessageFactory.Text(reply),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ γράψε το σχόλιό σου παρακάτω:")
-                });
+                },
+                cancellationToken);
         }
 
         private async Task<DialogTurnResult> CommentReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var botFeedback = await _botFeedback.GetAsync(stepContext.Context);
-            botFeedback.Comment = (string)stepContext.Result;
-            await _botFeedback.SetAsync(stepContext.Context, botFeedback);
+            var comment = (string)stepContext.Result;
 
             await stepContext.Context.SendActivityAsync("Σ' ευχαριστώ πολύ για το σχόλιό σου! 😊");
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepContext.EndDialogAsync(comment, cancellationToken);
         }
 
         #endregion
