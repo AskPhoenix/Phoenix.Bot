@@ -30,7 +30,7 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly Repository<AspNetRoles> roleRepository;
 
         public MainDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
-            IntroductionDialog introductionDialog, HelpDialog welcomeDialog,
+            IntroductionDialog introductionDialog, 
             StudentDialog studentDialog, TeacherDialog teacherDialog, ParentDialog parentDialog)
             : base(nameof(MainDialog))
         {
@@ -45,7 +45,6 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(introductionDialog);
-            AddDialog(welcomeDialog);
 
             AddDialog(studentDialog);
             AddDialog(teacherDialog);
@@ -160,7 +159,8 @@ namespace Phoenix.Bot.Dialogs.Common
         }
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, stepContext.Options, cancellationToken);
+            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
+        //TODO: Check ActiveDialog's value
 
         #endregion
     }

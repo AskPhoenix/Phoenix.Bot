@@ -26,7 +26,6 @@ namespace Phoenix.Bot.Dialogs.Teacher
         private static class WaterfallNames
         {
             public const string Menu = "Teacher_Menu_WaterfallDialog";
-            public const string Help = "Teacher_Help_WaterfallDialog";
         }
 
         public TeacherDialog(UserManager<ApplicationUser> userManager, PhoenixContext phoenixContext, ApplicationDbContext appContext)

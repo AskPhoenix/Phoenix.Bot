@@ -22,7 +22,7 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
 
         public IntroductionDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
-            AuthDialog authDialog, HelpDialog welcomeDialog)
+            AuthDialog authDialog, HelpDialog helpDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
@@ -32,7 +32,7 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(authDialog);
-            AddDialog(welcomeDialog);
+            AddDialog(helpDialog);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Introduction.Top,
                 new WaterfallStep[]
