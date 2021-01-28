@@ -5,7 +5,7 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
-using Phoenix.Bot.Dialogs.Student.Common;
+using Phoenix.Bot.Dialogs.Actions.Common;
 using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
@@ -18,7 +18,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs.Student
+namespace Phoenix.Bot.Dialogs.Actions
 {
     public class ExamDialog : ComponentDialog
     {

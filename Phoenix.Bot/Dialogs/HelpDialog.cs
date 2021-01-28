@@ -13,7 +13,7 @@ using Phoenix.DataHandle.Main;
 using System;
 using Phoenix.Bot.Utilities.Actions;
 
-namespace Phoenix.Bot.Dialogs.Common
+namespace Phoenix.Bot.Dialogs
 {
     public class HelpDialog : ComponentDialog
     {
@@ -182,7 +182,8 @@ namespace Phoenix.Bot.Dialogs.Common
         private async Task<DialogTurnResult> ActionsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            bool canEdit = (Role)userData.Role >= Role.Teacher;
+            // TODO: Decide depending on the Role
+            bool canEdit = false;
             
             await stepContext.Context.SendActivityAsync("Στη συνέχεια ας δούμε τις διαθέσιμες δυνατότητες:");
 
@@ -238,30 +239,31 @@ namespace Phoenix.Bot.Dialogs.Common
 
         private async Task<DialogTurnResult> ActionDetailsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var topic = (StudentAction)(stepContext.Options as HelpOptions).DetailedAction;
-            var topicName = topic == StudentAction.Exercises ? "τις ασκήσεις" : topic == StudentAction.Exams ? "τα διαγωνίσματα" : "το πρόγραμμα";
+            var topic = (BotAction)(stepContext.Options as HelpOptions).DetailedAction;
+            var topicName = topic == BotAction.Exercise ? "τις ασκήσεις" : topic == BotAction.Exam ? "τα διαγωνίσματα" : "το πρόγραμμα";
             
             await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις περισσότερες πληροφορίες για " + topicName + ":");
 
             var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            bool canEdit = (Role)userData.Role >= Role.Teacher;
+            // TODO: Decide depending on the Role
+            bool canEdit = false;
 
             var cards = topic switch
             {
-                StudentAction.Exercises => new HeroCard[3]
+                BotAction.Exercise => new HeroCard[3]
                 {
                     new HeroCard(title: "📚 Eργασίες", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε") + " τη δουλειά για το σπίτι για κάποιο μάθημα."),
                     new HeroCard(title: "⏭ Για το επόμενο μάθημα", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " τις εργασίες για το σπίτι για το επόμενο μάθημα."),
                     new HeroCard(title: "⌚ Για άλλο μάθημα", subtitle: "Κάνε αναζήτηση εργασιών για κάποιου παλαιότερο ή μελλοντικό μάθημα.")
                 },
-                StudentAction.Exams => new HeroCard[4]
+                BotAction.Exam => new HeroCard[4]
                 {
                     new HeroCard(title: "📝 Διαγωνίσματα", subtitle: "Προετοιμασία για τα επόμενα διαγωνίσματα και βαθμοί των προηγούμενων."),
                     new HeroCard(title: "💯 Επιδόσεις", subtitle: (canEdit ? "Διαχειρίσου" : "Έλεγξε") + " τη βαθμολογία για παλαιότερα διαγωνίσματα."),
                     new HeroCard(title: "🔮 Μελλοντικά", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε πότε είναι") + " τα επόμενα διαγωνίσματα."),
                     new HeroCard(title: "🏃 Προετοιμασία", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " την ύλη και τι χρειάζεται διάβασμα για ένα προγραμματισμένο διαγώνισμα.")
                 },
-                StudentAction.Schedule => new HeroCard[5]
+                BotAction.Schedule => new HeroCard[5]
                 {
                     new HeroCard(title: "📅 Πρόγραμμα", subtitle: "Μάθε το πρόγραμμα των μαθημάτων και ενημερώσου για τις αλλαγές του."),
                     new HeroCard(title: "🌞 Σημερινό", subtitle: "Δες τις ώρες και τις αίθουσες για τα σημερινά μαθήματα."),

@@ -17,7 +17,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs.Student
+namespace Phoenix.Bot.Dialogs.Actions
 {
     public class ScheduleDialog : ComponentDialog
     {

@@ -2,7 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
-using Phoenix.Bot.Dialogs.Common.Authentication;
+using Phoenix.Bot.Dialogs.Authentication;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs.Common
+namespace Phoenix.Bot.Dialogs
 {
     public class IntroductionDialog : ComponentDialog
     {
@@ -40,8 +40,7 @@ namespace Phoenix.Bot.Dialogs.Common
                     IntroStepAsync,
                     TermsStepAsync,
                     TermsReplyStepAsync,
-                    WelcomeAskStepAsync,
-                    EndStepAsync
+                    WelcomeAskStepAsync
                 }));
 
             InitialDialogId = WaterfallNames.Introduction.Top;
@@ -113,26 +112,13 @@ namespace Phoenix.Bot.Dialogs.Common
                 return await stepContext.EndDialogAsync(false, cancellationToken);
             }
 
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, cancellationToken: cancellationToken);
-            userData.HasAcceptedTerms = true;
-            await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
-
             await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> WelcomeAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            mainState.UserWelcomed = true;
-            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
-
             return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions() { AskForTutorial = true }, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            return await stepContext.EndDialogAsync(null, cancellationToken);
         }
     }
 }

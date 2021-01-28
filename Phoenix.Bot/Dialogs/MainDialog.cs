@@ -1,23 +1,20 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
-using Phoenix.Bot.Dialogs.Student;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Dialogs.Teacher;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
-using Phoenix.DataHandle.Main;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
-using Phoenix.Bot.Dialogs.Parent;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.Miscellaneous;
 
-namespace Phoenix.Bot.Dialogs.Common
+namespace Phoenix.Bot.Dialogs
 {
     public class MainDialog : ComponentDialog
     {
@@ -30,8 +27,7 @@ namespace Phoenix.Bot.Dialogs.Common
         private readonly Repository<AspNetRoles> roleRepository;
 
         public MainDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
-            IntroductionDialog introductionDialog, 
-            StudentDialog studentDialog, TeacherDialog teacherDialog, ParentDialog parentDialog)
+            IntroductionDialog introductionDialog, HomeDialog homeDialog)
             : base(nameof(MainDialog))
         {
             this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
@@ -45,15 +41,12 @@ namespace Phoenix.Bot.Dialogs.Common
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(introductionDialog);
-
-            AddDialog(studentDialog);
-            AddDialog(teacherDialog);
-            AddDialog(parentDialog);
+            AddDialog(homeDialog);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Main.Top,
                 new WaterfallStep[]
                 {
-                    FirstTimeStepAsync,
+                    IntroStepAsync,
                     RoleStepAsync,
                     RoleSelectStepAsync,
                     ForwardStepAsync,
@@ -65,23 +58,10 @@ namespace Phoenix.Bot.Dialogs.Common
 
         #region Top Waterfall Dialog
 
-        private async Task<DialogTurnResult> FirstTimeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-
-            if (!userData.IsAuthenticated)
-            {
-                LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-                string providerKey = stepContext.Context.Activity.From.Id;
-
-                if (userRepository.AnyLogin(provider, providerKey, onlyActive: true))
-                {
-                    userData.IsAuthenticated = true;
-                    await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
-                }
-                else
-                    return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
-            }
+            if (!userRepository.AnyLogin(stepContext.Context.Activity, onlyActive: true))
+                return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
 
             return await stepContext.NextAsync(true, cancellationToken);
         }
@@ -89,19 +69,14 @@ namespace Phoenix.Bot.Dialogs.Common
         private async Task<DialogTurnResult> RoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.RoleChecked)
+            if (mainState.RolesOverlapChecked)
                 return await stepContext.NextAsync(null, cancellationToken);
 
-            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            string providerKey = stepContext.Context.Activity.From.Id;
-            
-            var user = userRepository.FindUserFromLogin(provider, providerKey);
+            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
             var userRoles = userRepository.FindRoles(user);
 
             if (userRoles.Count() == 1)
-                return await stepContext.NextAsync(userRoles.Single().Type, cancellationToken);
-            if (userRoles.All(r => r.Type >= Role.Teacher))
-                return await stepContext.NextAsync(userRoles.Max(r => r.Type), cancellationToken);
+                return await stepContext.NextAsync(null, cancellationToken);
 
             return await stepContext.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
@@ -116,46 +91,35 @@ namespace Phoenix.Bot.Dialogs.Common
         private async Task<DialogTurnResult> RoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.RoleChecked)
+            if (mainState.RolesOverlapChecked)
                 return await stepContext.NextAsync(null, cancellationToken);
+            
+            if (stepContext.Result is FoundChoice foundChoice)
+            {
+                var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+                userData.SelectedOverlappingRole = (await roleRepository.Find(r => r.NormalizedName == foundChoice.Value)).Type;
+                await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
+            }
 
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            Role role = stepContext.Result is FoundChoice foundChoice
-                ? (await roleRepository.Find(r => r.NormalizedName == foundChoice.Value)).Type
-                : role = (Role)stepContext.Result;
-
-            mainState.RoleChecked = true;
+            mainState.RolesOverlapChecked = true;
             await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
-
-            userData.Role = (int)role;
-            await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
             
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
-
-            LoginProvider provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            string providerKey = stepContext.Context.Activity.From.Id;
-            var user = userRepository.FindUserFromLogin(provider, providerKey);
+            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
             if (user == null)
                 return await stepContext.EndDialogAsync(null, cancellationToken);
 
-            //TODO: Generalize for all Roles
-            var studentOptions = new StudentOptions() { StudentId = user.Id };
-            if (conversationData.Command >= (Command)30)
-                studentOptions.Action = (StudentAction)(conversationData.Command - 30 + 1);
+            var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
+            var homeOptions = new HomeOptions() { UserId = user.Id, Action = BotAction.NoAction };
             
-            return (Role)userData.Role switch
-            {
-                Role.Student                    => await stepContext.BeginDialogAsync(nameof(StudentDialog), studentOptions, cancellationToken),
-                Role.Parent                     => await stepContext.BeginDialogAsync(nameof(ParentDialog), null, cancellationToken),
-                var r when r >= Role.Teacher    => await stepContext.BeginDialogAsync(nameof(TeacherDialog), null, cancellationToken),
-                _                               => await stepContext.CancelAllDialogsAsync(cancellationToken)
-            };
+            if (conversationData.Command >= (Command)30)
+                homeOptions.Action = (BotAction)(conversationData.Command - 30 + 1);
+
+            return await stepContext.BeginDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
         }
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

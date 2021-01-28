@@ -12,7 +12,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs.Common.Authentication
+namespace Phoenix.Bot.Dialogs.Authentication
 {
     public class VerificationDialog : ComponentDialog
     {

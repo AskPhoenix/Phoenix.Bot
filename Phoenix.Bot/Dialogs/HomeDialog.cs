@@ -1,7 +1,7 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Dialogs.Common;
+using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
@@ -10,13 +10,13 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs.Student
+namespace Phoenix.Bot.Dialogs
 {
-    public class StudentDialog : ComponentDialog
+    public class HomeDialog : ComponentDialog
     {
-        public StudentDialog(FeedbackDialog feedbackDialog, HelpDialog helpDialog,
+        public HomeDialog(FeedbackDialog feedbackDialog, HelpDialog helpDialog,
             ExerciseDialog exerciseDialog, ExamDialog examDialog, ScheduleDialog scheduleDialog)
-            : base(nameof(StudentDialog))
+            : base(nameof(HomeDialog))
         {
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
@@ -27,24 +27,23 @@ namespace Phoenix.Bot.Dialogs.Student
             AddDialog(examDialog);
             AddDialog(scheduleDialog);
 
-            AddDialog(new WaterfallDialog(WaterfallNames.Student.Home,
+            AddDialog(new WaterfallDialog(WaterfallNames.Home.Top,
                 new WaterfallStep[]
                 {
                     MenuStepAsync,
                     ActionStepAsync,
-                    FeedbackStepAsync,
-                    LoopStepAsync
+                    FeedbackStepAsync
                 }));
 
-            InitialDialogId = WaterfallNames.Student.Home;
+            InitialDialogId = WaterfallNames.Home.Top;
         }
 
-        #region Home Waterfall Dialog
+        #region Top Waterfall Dialog
 
         private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var studentOptions = stepContext.Options as StudentOptions;
-            if (studentOptions.Action != StudentAction.NoAction)
+            var homeOptions = stepContext.Options as HomeOptions;
+            if (homeOptions.Action != BotAction.NoAction)
                 return await stepContext.NextAsync(null, cancellationToken);
 
             return await stepContext.PromptAsync(
@@ -52,7 +51,7 @@ namespace Phoenix.Bot.Dialogs.Student
                 new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
-                    RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω απαντήσεις:"),
+                    RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
                     Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", "📅 Πρόγραμμα", "💪 Βοήθεια", "👍 Κάνε ένα σχόλιο" })
                 },
                 cancellationToken);
@@ -60,25 +59,25 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var studentOptions = stepContext.Options as StudentOptions;
+            var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                studentOptions.Action = (StudentAction)(foundChoice.Index + 1);
+                homeOptions.Action = (BotAction)(foundChoice.Index + 1);
 
-            switch (studentOptions.Action)
+            switch (homeOptions.Action)
             {
-                case StudentAction.Exercises:
+                case BotAction.Exercise:
                     return await stepContext.BeginDialogAsync(nameof(ExerciseDialog), null, cancellationToken);
-                case StudentAction.Exams:
+                case BotAction.Exam:
                     return await stepContext.BeginDialogAsync(nameof(ExamDialog), null, cancellationToken);
-                case StudentAction.Schedule:
+                case BotAction.Schedule:
                     return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), null, cancellationToken);
-                case StudentAction.Help:
+                case BotAction.Help:
                     return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), cancellationToken);
-                case StudentAction.Feedback:
+                case BotAction.Feedback:
                     var feedbackOptions = new FeedbackOptions()
                     {
                         BotAskedForFeedback = false,
-                        UserId = studentOptions.StudentId
+                        UserId = homeOptions.UserId
                     };
                     return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
                 default:
@@ -88,13 +87,13 @@ namespace Phoenix.Bot.Dialogs.Student
 
         private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var studentOptions = stepContext.Options as StudentOptions;
-            if (studentOptions.Action != StudentAction.Feedback && studentOptions.Action != StudentAction.Help && new Random().Next(3) == 0)
+            var homeOptions = stepContext.Options as HomeOptions;
+            if (homeOptions.Action != BotAction.Feedback && homeOptions.Action != BotAction.Help && new Random().Next(3) == 0)
             {
-                var feedbackOptions = new FeedbackOptions() 
+                var feedbackOptions = new FeedbackOptions()
                 {
                     BotAskedForFeedback = true,
-                    UserId = studentOptions.StudentId
+                    UserId = homeOptions.UserId
                 };
                 return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
             }
@@ -102,14 +101,7 @@ namespace Phoenix.Bot.Dialogs.Student
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
-        private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var studentOptions = stepContext.Options as StudentOptions;
-            studentOptions.Action = StudentAction.NoAction;
-
-            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, studentOptions, cancellationToken);
-        }
-
         #endregion
+
     }
 }

@@ -9,11 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Phoenix.Bot.Adapters;
 using Phoenix.Bot.Bots;
-using Phoenix.Bot.Dialogs.Common;
-using Phoenix.Bot.Dialogs.Common.Authentication;
-using Phoenix.Bot.Dialogs.Parent;
-using Phoenix.Bot.Dialogs.Student;
-using Phoenix.Bot.Dialogs.Teacher;
+using Phoenix.Bot.Dialogs;
+using Phoenix.Bot.Dialogs.Authentication;
+using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using System.Globalization;
@@ -42,20 +40,16 @@ namespace Phoenix.Bot
             services.AddScoped<MainDialog>();
             services.AddScoped<HelpDialog>();
             services.AddScoped<FeedbackDialog>();
+            services.AddScoped<HomeDialog>();
 
             services.AddScoped<IntroductionDialog>();
             services.AddScoped<AuthDialog>();
             services.AddScoped<CredentialsDialog>();
             services.AddScoped<VerificationDialog>();
             
-            services.AddScoped<StudentDialog>();
             services.AddScoped<ExerciseDialog>();
             services.AddScoped<ExamDialog>();
             services.AddScoped<ScheduleDialog>();
-
-            services.AddScoped<TeacherDialog>();
-
-            services.AddScoped<ParentDialog>();
 
             services.AddTransient<IBot, DialogBot<MainDialog>>();
 

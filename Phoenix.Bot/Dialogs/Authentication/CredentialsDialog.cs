@@ -14,7 +14,7 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.DataHandle.Main;
 using Phoenix.Bot.Utilities.State.Options;
 
-namespace Phoenix.Bot.Dialogs.Common.Authentication
+namespace Phoenix.Bot.Dialogs.Authentication
 {
     public class CredentialsDialog : ComponentDialog
     {
