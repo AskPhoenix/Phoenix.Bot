@@ -64,6 +64,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                     Where(u => u.UserSchool.Any(us => us.School.FacebookPageId == stepContext.Context.Activity.Recipient.Id)).
                     Single(u => u.User.IdentifierCode == authenticationOptions.VerifiedCode);
 
+                verifiedUser.User.TermsAccepted = true;
                 verifiedUser.PhoneNumberConfirmed = true;
                 userRepository.Update(verifiedUser);
 
@@ -84,7 +85,9 @@ namespace Phoenix.Bot.Dialogs.Authentication
                     var appUser = await appStore.FindByIdAsync(verifiedUser.Id.ToString());
                     if (!await userManager.HasPasswordAsync(appUser))
                     {
-                        string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 8);
+                        char[] invalidPasswordChars = { 'l', 'I', 'O', '0', '1' };
+                        string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                        password = new string(password.Where(c => !invalidPasswordChars.Contains(c)).ToArray()).Substring(0, 8);
                         await userManager.AddPasswordAsync(appUser, password);
                     }
                 }

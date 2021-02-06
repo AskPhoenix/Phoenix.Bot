@@ -5,6 +5,7 @@ using Microsoft.Bot.Schema;
 using Phoenix.Bot.Dialogs.Authentication;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Main.Models;
@@ -18,6 +19,7 @@ namespace Phoenix.Bot.Dialogs
     public class IntroductionDialog : ComponentDialog
     {
         private readonly SchoolRepository schoolRepository;
+        private readonly AspNetUserRepository userRepository;
         private readonly IStatePropertyAccessor<UserData> userDataAccesor;
         private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
 
@@ -26,6 +28,7 @@ namespace Phoenix.Bot.Dialogs
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
+            this.userRepository = new AspNetUserRepository(phoenixContext);
             this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
             this.mainStateAccesor = conversationState.CreateProperty<MainState>(nameof(MainState));
 
@@ -77,6 +80,10 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> TermsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+            if (user != null && user.User.TermsAccepted)
+                await stepContext.NextAsync(null, cancellationToken);
+
             var card = new HeroCard
             {
                 Title = "Όροι Παροχής Υπηρεσίας",
@@ -104,15 +111,18 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> TermsReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 1)
+            if (stepContext.Result is FoundChoice foundChoice && foundChoice.Index == 1)
             {
-                await stepContext.Context.SendActivityAsync("Λυπάμαι, αλλά θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης " +
-                    "ώστε να χρησιμοποιήσεις τις υπηρεσίες του AskPhoenix.");
-                return await stepContext.EndDialogAsync(false, cancellationToken);
+                if (foundChoice.Index == 1)
+                {
+                    await stepContext.Context.SendActivityAsync("Λυπάμαι, αλλά θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης " +
+                        "ώστε να χρησιμοποιήσεις τις υπηρεσίες του AskPhoenix.");
+                    return await stepContext.EndDialogAsync(false, cancellationToken);
+                }
+                
+                await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             }
 
-            await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
         }
 
