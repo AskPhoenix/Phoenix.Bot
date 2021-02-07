@@ -13,12 +13,13 @@ using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Miscellaneous;
+using Phoenix.DataHandle.Main;
+using System;
 
 namespace Phoenix.Bot.Dialogs
 {
     public class MainDialog : ComponentDialog
     {
-        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
         private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
         private readonly IStatePropertyAccessor<ConversationData> conversationDataAccessor;
         private readonly BotState conversationState;
@@ -26,11 +27,10 @@ namespace Phoenix.Bot.Dialogs
         private readonly AspNetUserRepository userRepository;
         private readonly Repository<AspNetRoles> roleRepository;
 
-        public MainDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
+        public MainDialog(PhoenixContext phoenixContext, ConversationState conversationState,
             IntroductionDialog introductionDialog, HomeDialog homeDialog)
             : base(nameof(MainDialog))
         {
-            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
             this.mainStateAccesor = conversationState.CreateProperty<MainState>(nameof(MainState));
             this.conversationDataAccessor = conversationState.CreateProperty<ConversationData>(nameof(ConversationData));
             this.conversationState = conversationState;
@@ -47,10 +47,16 @@ namespace Phoenix.Bot.Dialogs
                 new WaterfallStep[]
                 {
                     IntroStepAsync,
-                    RoleStepAsync,
-                    RoleSelectStepAsync,
                     ForwardStepAsync,
                     LoopStepAsync
+                }));
+
+            AddDialog(new WaterfallDialog(WaterfallNames.Main.Role,
+                new WaterfallStep[]
+                {
+                    CheckRoleAsync,
+                    AskRoleStepAsync,
+                    SelectRoleStepAsync
                 }));
 
             InitialDialogId = WaterfallNames.Main.Top;
@@ -63,20 +69,84 @@ namespace Phoenix.Bot.Dialogs
             if (!userRepository.AnyLogin(stepContext.Context.Activity, onlyActive: true))
                 return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
 
-            return await stepContext.NextAsync(true, cancellationToken);
+            return await stepContext.BeginDialogAsync(WaterfallNames.Main.Role, null, cancellationToken);
         }
 
-        private async Task<DialogTurnResult> RoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.RolesOverlapChecked)
-                return await stepContext.NextAsync(null, cancellationToken);
+            Role role = (Role)stepContext.Result;
 
             var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
-            var userRoles = userRepository.FindRoles(user);
+            if (user == null)
+                return await stepContext.EndDialogAsync(null, cancellationToken);
 
-            if (userRoles.Count() == 1)
-                return await stepContext.NextAsync(null, cancellationToken);
+            var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
+            var homeOptions = new HomeOptions() { UserId = user.Id, UserRole = role, Action = BotAction.NoAction };
+            
+            if ((int)conversationData.Command >= CommandAttributes.ActionCommandsBase)
+                homeOptions.Action = (BotAction)(conversationData.Command - CommandAttributes.ActionCommandsBase + 1);
+
+            return await stepContext.BeginDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            //TODO: Check ActiveDialog's value
+            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
+        }
+
+        #endregion
+
+        #region Role Waterfall Dialog
+
+        private async Task<DialogTurnResult> CheckRoleAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            AspNetUsers user;
+            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+
+            if (mainState.RoleChecked)
+            {
+                if (mainState.HasMultipleRoles)
+                    return await stepContext.EndDialogAsync(mainState.SelectedRole, cancellationToken);
+
+                user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+                return await stepContext.EndDialogAsync(userRepository.FindRoles(user).Single().Type, cancellationToken);
+            }
+
+            user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+            var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
+            Role r;
+
+            if (userRoles.Length == 1 && (int)(r = userRoles.Single()) < RoleAttributes.BackendRolesBase)
+            {
+                mainState.RoleChecked = true;
+                await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
+                return await stepContext.EndDialogAsync(r, cancellationToken);
+            }
+
+            bool hasStaffRole = userRoles.Any(r => (int)r >= RoleAttributes.StaffRolesBase && (int)r < RoleAttributes.BackendRolesBase);
+            bool invalidMultipleRoles = userRoles.Length > 2 || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !hasStaffRole));
+            if (invalidMultipleRoles)
+            {
+                await stepContext.Context.SendActivityAsync("Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.");
+                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για να διορθωθεί το πρόβλημα");
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+            }
+
+            mainState.HasMultipleRoles = true;
+            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
+            return await stepContext.NextAsync(userRoles, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> AskRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var userRoles = (Role[])stepContext.Result;
+            
+            //TODO: Distinguish Role.SuperAdmin's behavior
+            if ((int)userRoles.First() >= RoleAttributes.BackendRolesBase)
+                userRoles = new Role[] { Role.Student, Role.Parent, Role.Teacher };
+
+            stepContext.Values.Add("translatedRoles", userRoles);
 
             return await stepContext.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
@@ -84,47 +154,22 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Θα ήθελες να συνδεθείς ως:"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε έναν από τους παρακάτω ρόλους:"),
-                    Choices = ChoiceFactory.ToChoices(userRoles.Select(r => r.NormalizedName).ToList())
+                    Choices = ChoiceFactory.ToChoices(userRoles.Select(r => r.ToNormalizedString()).ToArray())
                 });
         }
 
-        private async Task<DialogTurnResult> RoleSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> SelectRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            var foundChoice = stepContext.Result as FoundChoice;
+            Role selRole = ((Role[])stepContext.Values["translatedRoles"]).ElementAt(foundChoice.Index);
+
             var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.RolesOverlapChecked)
-                return await stepContext.NextAsync(null, cancellationToken);
-            
-            if (stepContext.Result is FoundChoice foundChoice)
-            {
-                var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-                userData.SelectedOverlappingRole = (await roleRepository.Find(r => r.NormalizedName == foundChoice.Value)).Type;
-                await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
-            }
-
-            mainState.RolesOverlapChecked = true;
+            mainState.SelectedRole = selRole;
+            mainState.RoleChecked = true;
             await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
-            
-            return await stepContext.NextAsync(null, cancellationToken);
+
+            return await stepContext.EndDialogAsync(selRole, cancellationToken);
         }
-
-        private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
-            if (user == null)
-                return await stepContext.EndDialogAsync(null, cancellationToken);
-
-            var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
-            var homeOptions = new HomeOptions() { UserId = user.Id, Action = BotAction.NoAction };
-            
-            if (conversationData.Command >= (Command)30)
-                homeOptions.Action = (BotAction)(conversationData.Command - 30 + 1);
-
-            return await stepContext.BeginDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-            => await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
-        //TODO: Check ActiveDialog's value
 
         #endregion
     }
