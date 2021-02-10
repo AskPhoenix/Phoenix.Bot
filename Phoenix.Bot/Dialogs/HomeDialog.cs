@@ -7,6 +7,7 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -52,7 +53,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
-                    Choices = ChoiceFactory.ToChoices(new string[] { "📚 Εργασίες", "📝 Διαγωνίσματα", "📅 Πρόγραμμα", "💪 Βοήθεια", "👍 Κάνε ένα σχόλιο" })
+                    Choices = BotActionsHelper.GetActionChoices(homeOptions.UserRole)
                 },
                 cancellationToken);
         }
@@ -61,7 +62,7 @@ namespace Phoenix.Bot.Dialogs
         {
             var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                homeOptions.Action = (BotAction)(foundChoice.Index + 1);
+                homeOptions.Action = BotActionsHelper.GetActionsForRole(homeOptions.UserRole).ElementAt(foundChoice.Index);
 
             switch (homeOptions.Action)
             {
@@ -80,7 +81,10 @@ namespace Phoenix.Bot.Dialogs
                         UserId = homeOptions.UserId
                     };
                     return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
+                case BotAction.Access:
+                    //TODO: Implement Dialog for Access Action
                 default:
+                    await stepContext.Context.SendActivityAsync("Η ενέργεια που ζητήσατε δεν είναι διαθέσιμη προς το παρόν.");
                     return await stepContext.EndDialogAsync(null, cancellationToken);
             }
         }
@@ -90,15 +94,11 @@ namespace Phoenix.Bot.Dialogs
             var homeOptions = stepContext.Options as HomeOptions;
             if (homeOptions.Action != BotAction.Feedback && homeOptions.Action != BotAction.Help && new Random().Next(3) == 0)
             {
-                var feedbackOptions = new FeedbackOptions()
-                {
-                    BotAskedForFeedback = true,
-                    UserId = homeOptions.UserId
-                };
+                var feedbackOptions = new FeedbackOptions() { BotAskedForFeedback = true, UserId = homeOptions.UserId };
                 return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
             }
 
-            return await stepContext.NextAsync(null, cancellationToken);
+            return await stepContext.EndDialogAsync(null, cancellationToken);
         }
 
         #endregion
