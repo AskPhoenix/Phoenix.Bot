@@ -5,7 +5,6 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
-using Phoenix.Bot.Dialogs.Actions.Common;
 using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
@@ -35,8 +34,8 @@ namespace Phoenix.Bot.Dialogs.Actions
             public const string Homework        = "StudentExercise_Homework_WaterfallDialog";
         }
 
-        public ExerciseDialog(PhoenixContext phoenixContext, ConversationState conversationState) :
-            base(nameof(ExerciseDialog))
+        public ExerciseDialog(PhoenixContext phoenixContext, ConversationState conversationState) 
+            : base(nameof(ExerciseDialog))
         {
             _phoenixContext = phoenixContext;
             _conversationState = conversationState;
@@ -44,7 +43,6 @@ namespace Phoenix.Bot.Dialogs.Actions
             _selCourseIds = _conversationState.CreateProperty<int[]>("SelCourseIds");
             _coursesEnrolledNum = _conversationState.CreateProperty<int>("CoursesEnrolledNum");
 
-            AddDialog(new CourseDialog());
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new DateTimePrompt(nameof(DateTimePrompt), null, "fr-fr"));
 
@@ -92,6 +90,7 @@ namespace Phoenix.Bot.Dialogs.Actions
 
         #region Lecture Waterfall Dialog
 
+        //TODO: REMOVE
         private async Task<DialogTurnResult> CourseStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var today = CalendarExtensions.GreeceLocalTime().Date;
@@ -116,7 +115,7 @@ namespace Phoenix.Bot.Dialogs.Actions
             if (coursesLookup.Count == 1)
                 return await stepContext.NextAsync(coursesLookup.First().Value, cancellationToken);
 
-            return await stepContext.BeginDialogAsync(nameof(CourseDialog), coursesLookup, cancellationToken);
+            return await stepContext.BeginDialogAsync("", coursesLookup, cancellationToken);
         }
 
         private async Task<DialogTurnResult> LectureStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

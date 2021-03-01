@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Actions
 {
     public class FeedbackDialog : ComponentDialog
     {

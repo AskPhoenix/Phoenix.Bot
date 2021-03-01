@@ -117,14 +117,14 @@ namespace Phoenix.Bot.Dialogs
             var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
             Role r;
 
-            if (userRoles.Length == 1 && (int)(r = userRoles.Single()) < RoleAttributes.BackendRolesBase)
+            if (userRoles.Length == 1 && !(r = userRoles.Single()).IsBackend())
             {
                 mainState.RoleChecked = true;
                 await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
                 return await stepContext.EndDialogAsync(r, cancellationToken);
             }
 
-            bool hasStaffRole = userRoles.Any(r => (int)r >= RoleAttributes.StaffRolesBase && (int)r < RoleAttributes.BackendRolesBase);
+            bool hasStaffRole = userRoles.Any(r => r.IsStaff());
             bool invalidMultipleRoles = userRoles.Length > 2 || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !hasStaffRole));
             if (invalidMultipleRoles)
             {
@@ -143,7 +143,7 @@ namespace Phoenix.Bot.Dialogs
             var userRoles = (Role[])stepContext.Result;
             
             //TODO: Distinguish Role.SuperAdmin's behavior
-            if ((int)userRoles.First() >= RoleAttributes.BackendRolesBase)
+            if (userRoles.First().IsBackend())
                 userRoles = new Role[] { Role.Student, Role.Parent, Role.Teacher };
 
             stepContext.Values.Add("translatedRoles", userRoles);

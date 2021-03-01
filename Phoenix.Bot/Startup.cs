@@ -38,18 +38,23 @@ namespace Phoenix.Bot
             services.AddSingleton<ConversationState>();
 
             services.AddScoped<MainDialog>();
-            services.AddScoped<HelpDialog>();
-            services.AddScoped<FeedbackDialog>();
-            services.AddScoped<HomeDialog>();
-
             services.AddScoped<IntroductionDialog>();
+            services.AddScoped<HomeDialog>();
+            
             services.AddScoped<AuthDialog>();
             services.AddScoped<CredentialsDialog>();
             services.AddScoped<VerificationDialog>();
-            
+
+            services.AddScoped<AssignmentsDialog>();
+            services.AddScoped<SearchDialog>();
+            services.AddScoped<ScheduleDialog>();
+            services.AddScoped<GradesDialog>();
+            services.AddScoped<AccessDialog>();
+
+            services.AddScoped<HelpDialog>();
+            services.AddScoped<FeedbackDialog>();
             services.AddScoped<ExerciseDialog>();
             services.AddScoped<ExamDialog>();
-            services.AddScoped<ScheduleDialog>();
 
             services.AddTransient<IBot, DialogBot<MainDialog>>();
 

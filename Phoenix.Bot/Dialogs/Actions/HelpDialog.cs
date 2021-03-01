@@ -9,11 +9,10 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using System.Linq;
-using Phoenix.DataHandle.Main;
 using System;
 using Phoenix.Bot.Utilities.Actions;
 
-namespace Phoenix.Bot.Dialogs
+namespace Phoenix.Bot.Dialogs.Actions
 {
     public class HelpDialog : ComponentDialog
     {
@@ -240,7 +239,7 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> ActionDetailsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var topic = (BotAction)(stepContext.Options as HelpOptions).DetailedAction;
-            var topicName = topic == BotAction.Exercise ? "τις ασκήσεις" : topic == BotAction.Exam ? "τα διαγωνίσματα" : "το πρόγραμμα";
+            var topicName = topic == BotAction.Exercises ? "τις ασκήσεις" : topic == BotAction.Exams ? "τα διαγωνίσματα" : "το πρόγραμμα";
             
             await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις περισσότερες πληροφορίες για " + topicName + ":");
 
@@ -250,13 +249,13 @@ namespace Phoenix.Bot.Dialogs
 
             var cards = topic switch
             {
-                BotAction.Exercise => new HeroCard[3]
+                BotAction.Exercises => new HeroCard[3]
                 {
                     new HeroCard(title: "📚 Eργασίες", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε") + " τη δουλειά για το σπίτι για κάποιο μάθημα."),
                     new HeroCard(title: "⏭ Για το επόμενο μάθημα", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " τις εργασίες για το σπίτι για το επόμενο μάθημα."),
                     new HeroCard(title: "⌚ Για άλλο μάθημα", subtitle: "Κάνε αναζήτηση εργασιών για κάποιου παλαιότερο ή μελλοντικό μάθημα.")
                 },
-                BotAction.Exam => new HeroCard[4]
+                BotAction.Exams => new HeroCard[4]
                 {
                     new HeroCard(title: "📝 Διαγωνίσματα", subtitle: "Προετοιμασία για τα επόμενα διαγωνίσματα και βαθμοί των προηγούμενων."),
                     new HeroCard(title: "💯 Επιδόσεις", subtitle: (canEdit ? "Διαχειρίσου" : "Έλεγξε") + " τη βαθμολογία για παλαιότερα διαγωνίσματα."),
