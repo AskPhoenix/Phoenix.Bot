@@ -15,6 +15,7 @@ using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using System.Globalization;
+using Phoenix.Bot.Dialogs.Actions.Preparation;
 
 namespace Phoenix.Bot
 {
@@ -44,6 +45,8 @@ namespace Phoenix.Bot
             services.AddScoped<AuthDialog>();
             services.AddScoped<CredentialsDialog>();
             services.AddScoped<VerificationDialog>();
+
+            services.AddScoped<PreparationDialog>();
 
             services.AddScoped<AssignmentsDialog>();
             services.AddScoped<SearchDialog>();

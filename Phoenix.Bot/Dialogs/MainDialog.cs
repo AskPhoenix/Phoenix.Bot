@@ -81,7 +81,7 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(null, cancellationToken);
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
-            var homeOptions = new HomeOptions() { UserId = user.Id, UserRole = role, Action = BotAction.NoAction };
+            var homeOptions = new HomeOptions(user.Id, role) { Action = BotAction.NoAction };
             
             if ((int)conversationData.Command >= CommandAttributes.ActionCommandsBase)
                 homeOptions.Action = (BotAction)(conversationData.Command - CommandAttributes.ActionCommandsBase + 1);

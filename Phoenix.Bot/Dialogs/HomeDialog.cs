@@ -2,15 +2,13 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Dialogs.Actions;
+using Phoenix.Bot.Dialogs.Actions.Preparation;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options;
-using Phoenix.DataHandle.Main;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
+using Phoenix.Bot.Utilities.State.Options.Actions;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,9 +17,8 @@ namespace Phoenix.Bot.Dialogs
 {
     public class HomeDialog : ComponentDialog
     {
-        private readonly AspNetUserRepository userRepository;
-
-        public HomeDialog(PhoenixContext phoenixContext,
+        public HomeDialog(
+            PreparationDialog preparationDialog,
             AssignmentsDialog assignmentsDialog, SearchDialog searchDialog,
             AccessDialog accessDialog,
             GradesDialog gradesDialog, ScheduleDialog scheduleDialog,
@@ -29,9 +26,9 @@ namespace Phoenix.Bot.Dialogs
             HelpDialog helpDialog, FeedbackDialog feedbackDialog)
             : base(nameof(HomeDialog))
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
-
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
+
+            AddDialog(preparationDialog);
 
             AddDialog(assignmentsDialog);
             AddDialog(searchDialog);
@@ -52,7 +49,6 @@ namespace Phoenix.Bot.Dialogs
                 {
                     MenuStepAsync,
                     CheckActionValidity,
-                    PrepareStepAsync,
                     ActionStepAsync,
                     FeedbackStepAsync
                 }));
@@ -93,37 +89,9 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            return await stepContext.NextAsync(null, cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> PrepareStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            int[] courseIds, childrenIds = null;
-
-            var homeOptions = stepContext.Options as HomeOptions;
-            var user = await userRepository.Find(homeOptions.UserId);
-
-            if (homeOptions.UserRole == Role.Parent)
-            {
-                List<int> childrenCourseIds = new List<int>();
-                AspNetUsers child;
-                
-                childrenIds = user.ParenthoodChild?.Select(p => p.ChildId).ToArray();
-
-                foreach (int childId in childrenIds ?? Enumerable.Empty<int>())
-                {
-                    child = await userRepository.Find(childId);
-                    childrenCourseIds.AddRange(child.StudentCourse?.Select(sc => sc.CourseId).ToList());
-                }
-
-                courseIds = childrenCourseIds.Any() ? childrenCourseIds.ToArray() : null;
-            }
-            else if (homeOptions.UserRole.IsStaff())
-                courseIds = user.TeacherCourse?.Select(tc => tc.CourseId).ToArray();
-            else
-                courseIds = user.StudentCourse?.Select(sc => sc.CourseId).ToArray();
-
-            return await stepContext.NextAsync(new ActionOptions(courseIds, childrenIds) { UserId = homeOptions.UserId }, cancellationToken);
+            var preparations = BotActionPreparationHelper.GetPreparationsForAction(homeOptions.Action, homeOptions.UserRole);
+            var preparationOptions = new PreparationOptions(preparations, homeOptions.GetUserOptions());
+            return await stepContext.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, cancellationToken);
         }
 
         private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
