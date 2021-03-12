@@ -6,7 +6,6 @@ using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Miscellaneous;
@@ -345,7 +344,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         {
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
-            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var exam = _phoenixContext.Exam.
                 Include(e => e.Lecture.Classroom).
                 FirstOrDefault(e => selCourseIds.Contains(e.Lecture.CourseId) && e.Lecture.StartDateTime.Date == selDate.Date);
@@ -481,7 +480,7 @@ namespace Phoenix.Bot.Dialogs.Actions
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
             string fbId = stepContext.Context.Activity.From.Id;
 
-            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var gradedStudentExams = _phoenixContext.StudentExam.
                 Where(se => selCourseIds.Contains(se.Exam.Lecture.CourseId) && se.Student.AspNetUserLogins.Any(l => l.ProviderKey == fbId && l.UserId == se.StudentId) && se.Grade != null);
 

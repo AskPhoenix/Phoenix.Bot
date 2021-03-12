@@ -6,7 +6,6 @@ using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main;
@@ -173,7 +172,7 @@ namespace Phoenix.Bot.Dialogs.Actions
 
         private async Task<DialogTurnResult> SpecificDateSelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             return await stepContext.ReplaceDialogAsync(WaterfallNames.Day, selDate, cancellationToken);
         }
 

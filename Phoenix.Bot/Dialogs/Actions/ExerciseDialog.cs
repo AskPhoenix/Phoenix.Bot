@@ -6,7 +6,6 @@ using Microsoft.Bot.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main.Models;
@@ -44,6 +43,8 @@ namespace Phoenix.Bot.Dialogs.Actions
             _coursesEnrolledNum = _conversationState.CreateProperty<int>("CoursesEnrolledNum");
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
+
+            //English, Spanish, French, Portuguese, Chinese, German, Italian, and Turkish.
             AddDialog(new DateTimePrompt(nameof(DateTimePrompt), null, "fr-fr"));
 
             AddDialog(new WaterfallDialog(WaterfallNames.Lecture,
@@ -353,7 +354,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         {
             int[] selCourseIds = await _selCourseIds.GetAsync(stepContext.Context);
 
-            var selDate = DialogsHelper.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var selDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
             var lec = _phoenixContext.Lecture.
                 Include(l => l.Exercise).
                 FirstOrDefault(l => selCourseIds.Contains(l.CourseId) && l.StartDateTime.Date == selDate.Date);

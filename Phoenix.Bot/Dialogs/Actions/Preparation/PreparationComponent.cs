@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
-    public abstract class PreparationWaterfallDialog : WaterfallDialog
+    public abstract class PreparationComponent : WaterfallDialog
     {
-        protected PreparationWaterfallDialog(BotActionPreparation preparation)
+        protected PreparationComponent(BotActionPreparation preparation)
             : base(WaterfallNames.Actions.Preparation.PreparationWaterfallName(preparation))
         {
             AddStep(InitializeStepAsync);

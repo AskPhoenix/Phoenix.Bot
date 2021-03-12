@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
-    public class AffiliatedUserWaterfallDialog : PreparationWaterfallDialog
+    public class AffiliatedUserPreparationComponent : PreparationComponent
     {
-        public AffiliatedUserWaterfallDialog() 
+        public AffiliatedUserPreparationComponent() 
             : base(BotActionPreparation.AffiliatedUserSelection)  { }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

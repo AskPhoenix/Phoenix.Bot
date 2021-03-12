@@ -70,7 +70,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
-                    Choices = BotActionsHelper.GetActionChoices(homeOptions.UserRole),
+                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRole),
                     Style = ListStyle.SuggestedAction
                 },
                 cancellationToken);
@@ -80,9 +80,9 @@ namespace Phoenix.Bot.Dialogs
         {
             var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                homeOptions.Action = BotActionsHelper.GetActionsForRole(homeOptions.UserRole).ElementAt(foundChoice.Index);
+                homeOptions.Action = BotActionHelper.GetActionsForRole(homeOptions.UserRole).ElementAt(foundChoice.Index);
 
-            bool isValidAction = BotActionsHelper.GetActionsForRole(homeOptions.UserRole).Contains(homeOptions.Action);
+            bool isValidAction = BotActionHelper.GetActionsForRole(homeOptions.UserRole).Contains(homeOptions.Action);
             if (!isValidAction)
             {
                 await stepContext.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
