@@ -9,14 +9,22 @@ using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
-    public abstract class PreparationComponent : WaterfallDialog
+    public abstract class PreparationComponent : ComponentDialog
     {
         protected PreparationComponent(BotActionPreparation preparation)
-            : base(WaterfallNames.Actions.Preparation.PreparationWaterfallName(preparation))
+            : base(preparation.ToString() + "_" + nameof(PreparationComponent))
         {
-            AddStep(InitializeStepAsync);
-            AddStep(AskStepAsync);
-            AddStep(SelectStepAsync);
+            string wfName = WaterfallNames.Actions.Preparation.PreparationWaterfallName(preparation);
+
+            AddDialog(new WaterfallDialog(wfName,
+                new WaterfallStep[]
+                {
+                    InitializeStepAsync,
+                    AskStepAsync,
+                    SelectStepAsync
+                }));
+
+            InitialDialogId = wfName;
         }
 
         protected abstract Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken);

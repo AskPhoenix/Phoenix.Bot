@@ -4,6 +4,8 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Repositories;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,13 +14,20 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class AffiliatedUserPreparationComponent : PreparationComponent
     {
-        public AffiliatedUserPreparationComponent() 
-            : base(BotActionPreparation.AffiliatedUserSelection)  { }
+        private readonly AspNetUserRepository userRepository;
+
+        public AffiliatedUserPreparationComponent(PhoenixContext phoenixContext) 
+            : base(BotActionPreparation.AffiliatedUserSelection) 
+        {
+            this.userRepository = new AspNetUserRepository(phoenixContext);
+        }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            options.Selectables = options.UserToPrepareFor.ParenthoodChild?.ToDictionary(p => p.ChildId, p => p.Child.User.FirstName);
+            var user = await userRepository.Find(options.IdToPrepareFor);
+
+            options.Selectables = user.ParenthoodChild?.ToDictionary(p => p.ChildId, p => p.Child.User.FirstName);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {

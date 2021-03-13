@@ -47,6 +47,11 @@ namespace Phoenix.Bot
             services.AddScoped<VerificationDialog>();
 
             services.AddScoped<PreparationDialog>();
+            services.AddScoped<AffiliatedUserPreparationComponent>();
+            services.AddScoped<CoursePreparationComponent>();
+            services.AddScoped<GroupPreparationComponent>();
+            services.AddScoped<DatePreparationComponent>();
+            services.AddScoped<LecturePreparationComponent>();
 
             services.AddScoped<AssignmentsDialog>();
             services.AddScoped<SearchDialog>();

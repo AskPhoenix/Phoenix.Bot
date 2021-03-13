@@ -2,9 +2,10 @@
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Actions;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Repositories;
 using System;
 using System.Linq;
 using System.Threading;
@@ -15,18 +16,37 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class DatePreparationComponent : PreparationComponent
     {
-        public DatePreparationComponent()
-            : base(BotActionPreparation.DateSelection) { }
+        private readonly AspNetUserRepository userRepository;
+        private readonly CourseRepository courseRepository;
+
+        public DatePreparationComponent(PhoenixContext phoenixContext)
+            : base(BotActionPreparation.DateSelection) 
+        {
+            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.courseRepository = new CourseRepository(phoenixContext);
+        }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            bool singleCourse = options.CourseToPrepareFor != null;
+            bool singleCourse = !options.PrepareForUserOrCourse;
 
-            if (options.SelectTheClosestFutureDate)
-                options.Selectables = PreparationComponentHelper.GetDateSelectables(options, LectureTimeline.Future, daysNum: 1);
+            if (singleCourse)
+            {
+                var course = await courseRepository.Find(options.IdToPrepareFor);
+                if (options.SelectTheClosestFutureDate)
+                    options.Selectables = GetDateSelectables(course, LectureTimeline.Future, daysNum: 1);
+                else
+                    options.Selectables = GetDateSelectables(course);
+            }
             else
-                options.Selectables = PreparationComponentHelper.GetDateSelectables(options);
+            {
+                var user = await userRepository.Find(options.IdToPrepareFor);
+                if (options.SelectTheClosestFutureDate)
+                    options.Selectables = GetDateSelectables(user, LectureTimeline.Future, daysNum: 1);
+                else
+                    options.Selectables = GetDateSelectables(user);
+            }
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
@@ -48,7 +68,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
         protected override async Task<DialogTurnResult> AskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            bool singleCourse = options.CourseToPrepareFor != null;
+            bool singleCourse = !options.PrepareForUserOrCourse;
+
             string msg = "Παρακάτω θα βρεις μερικές από τις πιο κοντινές ημερομηνίες ";
             if (singleCourse)
                 msg += "που είχες μάθημα.";

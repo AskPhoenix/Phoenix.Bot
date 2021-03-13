@@ -91,7 +91,6 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            //TODO: Check ActiveDialog's value
             return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
         }
 

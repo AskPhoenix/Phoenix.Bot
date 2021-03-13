@@ -17,7 +17,12 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
         private readonly AspNetUserRepository userRepository;
         private readonly CourseRepository courseRepository;
 
-        public PreparationDialog(PhoenixContext phoenixContext) 
+        public PreparationDialog(PhoenixContext phoenixContext,
+            AffiliatedUserPreparationComponent affiliatedUserPreparationComponent,
+            CoursePreparationComponent coursePreparationComponent,
+            GroupPreparationComponent groupPreparationComponent,
+            DatePreparationComponent datePreparationComponent,
+            LecturePreparationComponent lecturePreparationComponent)
             : base(nameof(PreparationDialog))
         {
             this.userRepository = new AspNetUserRepository(phoenixContext);
@@ -33,43 +38,13 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     LoopStepAsync
                 }));
 
-            AddDialog(new AffiliatedUserPreparationComponent());
-            AddDialog(new CoursePreparationComponent());
-            AddDialog(new GroupPreparationComponent());
-            AddDialog(new DatePreparationComponent());
-            AddDialog(new LecturePreparationComponent());
+            AddDialog(affiliatedUserPreparationComponent);
+            AddDialog(coursePreparationComponent);
+            AddDialog(groupPreparationComponent);
+            AddDialog(datePreparationComponent);
+            AddDialog(lecturePreparationComponent);
 
             InitialDialogId = WaterfallNames.Actions.Preparation.Top;
-        }
-
-        private async Task<PreparationComponentOptions> PrepareForUserAsync(PreparationOptions preparationOptions, int userIdToPrepareFor)
-        {
-            AspNetUsers userToPrepareFor;
-            try
-            {
-                userToPrepareFor = await userRepository.Find(userIdToPrepareFor);
-            }
-            catch (InvalidOperationException)
-            {
-                return null;
-            }
-
-            return new PreparationComponentOptions(userToPrepareFor, preparationOptions.GetUserOptions());
-        }
-
-        private async Task<PreparationComponentOptions> PrepareForCourseAsync(PreparationOptions preparationOptions, int courseIdToPrepareFor)
-        {
-            Course courseToPrepareFor;
-            try
-            {
-                courseToPrepareFor = await courseRepository.Find(courseIdToPrepareFor);
-            }
-            catch (InvalidOperationException)
-            {
-                return null;
-            }
-            
-            return new PreparationComponentOptions(courseToPrepareFor, preparationOptions.GetUserOptions());
         }
 
         #region Top Waterfall Dialog
@@ -87,7 +62,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (preparationOptions.AffiliatedUserId != null)
                         return await stepContext.NextAsync(preparationOptions.AffiliatedUserId, cancellationToken);
 
-                    preparationComponentOptions = await PrepareForUserAsync(preparationOptions, preparationOptions.UserId);
+                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
                     break;
                 case BotActionPreparation.CourseSelection:
                     if (preparationOptions.CourseId != null)
@@ -96,22 +71,22 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     int userIdToPrepareFor = preparationOptions.UserRole == Role.Parent
                         ? (preparationOptions.AffiliatedUserId ?? 0) 
                         : preparationOptions.UserId;
-                    preparationComponentOptions = await PrepareForUserAsync(preparationOptions, userIdToPrepareFor);
+                    preparationComponentOptions = new PreparationComponentOptions(userIdToPrepareFor, true, preparationOptions.GetUserOptions());
                     break;
                 case BotActionPreparation.GroupSelection:
                     if (preparationOptions.CourseId != null)
                         return await stepContext.NextAsync(preparationOptions.CourseId, cancellationToken);
 
-                    preparationComponentOptions = await PrepareForUserAsync(preparationOptions, preparationOptions.UserId);
+                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
                     break;
                 case BotActionPreparation.DateSelection:
                     if (preparationOptions.DateToPrepareFor != null)
                         return await stepContext.NextAsync(preparationOptions.DateToPrepareFor, cancellationToken);
 
                     if (preparationOptions.UserRole.IsStaff())
-                        preparationComponentOptions = await PrepareForUserAsync(preparationOptions, preparationOptions.UserId);
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
                     else
-                        preparationComponentOptions = await PrepareForCourseAsync(preparationOptions, preparationOptions.CourseId ?? 0);
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId ?? 0, false, preparationOptions.GetUserOptions());
 
                     preparationComponentOptions.SelectTheClosestFutureDate = preparationOptions.SelectTheClosestFutureDate;
                     break;
@@ -119,7 +94,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (preparationOptions.LectureId != null)
                         return await stepContext.NextAsync(preparationOptions.LectureId, cancellationToken);
 
-                    preparationComponentOptions = await PrepareForCourseAsync(preparationOptions, preparationOptions.CourseId ?? 0);
+                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId ?? 0, false, 
+                        preparationOptions.DateToPrepareFor ?? DateTimeOffset.UtcNow.Date, preparationOptions.GetUserOptions());
                     break;
                 
                 case BotActionPreparation.NoPreparation:
@@ -133,7 +109,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                 return await stepContext.CancelAllDialogsAsync();
             }
 
-            string nextPreparationDialogName = WaterfallNames.Actions.Preparation.PreparationWaterfallName(nextPreparation);
+            string nextPreparationDialogName = nextPreparation.ToString() + "_" + nameof(PreparationComponent);
             return await stepContext.BeginDialogAsync(nextPreparationDialogName, preparationComponentOptions, cancellationToken);
         }
 
@@ -159,8 +135,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     break;
             }
 
-            //TODO: Check ActiveDialog's value
-            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
+            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, preparationOptions, cancellationToken);
         }
 
         #endregion
