@@ -112,6 +112,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                         preparationComponentOptions = await PrepareForUserAsync(preparationOptions, preparationOptions.UserId);
                     else
                         preparationComponentOptions = await PrepareForCourseAsync(preparationOptions, preparationOptions.CourseId ?? 0);
+
+                    preparationComponentOptions.SelectTheClosestFutureDate = preparationOptions.SelectTheClosestFutureDate;
                     break;
                 case BotActionPreparation.LectureSelection:
                     if (preparationOptions.LectureId != null)

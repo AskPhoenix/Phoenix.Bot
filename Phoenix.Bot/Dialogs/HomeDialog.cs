@@ -91,6 +91,9 @@ namespace Phoenix.Bot.Dialogs
 
             var preparations = BotActionPreparationHelper.GetPreparationsForAction(homeOptions.Action, homeOptions.UserRole);
             var preparationOptions = new PreparationOptions(preparations, homeOptions.GetUserOptions());
+            if (homeOptions.Action == BotAction.Assignments)
+                preparationOptions.SelectTheClosestFutureDate = true;
+
             return await stepContext.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, cancellationToken);
         }
 
