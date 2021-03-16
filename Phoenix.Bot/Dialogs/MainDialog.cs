@@ -25,7 +25,6 @@ namespace Phoenix.Bot.Dialogs
         private readonly BotState conversationState;
 
         private readonly AspNetUserRepository userRepository;
-        private readonly Repository<AspNetRoles> roleRepository;
 
         public MainDialog(PhoenixContext phoenixContext, ConversationState conversationState,
             IntroductionDialog introductionDialog, HomeDialog homeDialog)
@@ -36,7 +35,6 @@ namespace Phoenix.Bot.Dialogs
             this.conversationState = conversationState;
 
             this.userRepository = new AspNetUserRepository(phoenixContext);
-            this.roleRepository = new Repository<AspNetRoles>(phoenixContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 

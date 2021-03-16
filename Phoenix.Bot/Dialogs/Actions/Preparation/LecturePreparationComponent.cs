@@ -4,11 +4,10 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
-using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,14 +16,14 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class LecturePreparationComponent : PreparationComponent
     {
-        private readonly AspNetUserRepository userRepository;
         private readonly CourseRepository courseRepository;
+        private readonly LectureRepository lectureRepository;
 
         public LecturePreparationComponent (PhoenixContext phoenixContext)
             : base(BotActionPreparation.LectureSelection) 
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
             this.courseRepository = new CourseRepository(phoenixContext);
+            this.lectureRepository = new LectureRepository(phoenixContext);
         }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -32,34 +31,24 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             var options = stepContext.Options as PreparationComponentOptions;
             bool singleCourse = !options.PrepareForUserOrCourse;
             var dateToPrepareFor = options.DateToPrepareFor.Value;
-
-            Course course = new Course();
-            AspNetUsers user = new AspNetUsers();
+            IQueryable<Lecture> lectures;
             
             if (singleCourse)
             {
-                course = await courseRepository.Find(options.IdToPrepareFor);
-                options.Selectables = PreparationComponentHelper.GetLectureSelectables(course, dateToPrepareFor);
+                lectures = lectureRepository.FindMany(options.IdToPrepareFor, dateToPrepareFor.Date, scheduledOnly: true);
             }
             else
             {
-                user = await userRepository.Find(options.IdToPrepareFor);
-                options.Selectables = PreparationComponentHelper.GetLectureSelectables(user, dateToPrepareFor);
+                int[] courses = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
+                lectures = lectureRepository.FindMany(courses, dateToPrepareFor.Date, scheduledOnly: true);
             }
-            
+
+            options.Selectables = PreparationComponentHelper.GetSelectables(lectures);
+
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
-                DateTimeOffset closestDate;
-                if (singleCourse)
-                {
-                    closestDate = CalendarExtensions.ParseDate(PreparationComponentHelper.GetDateSelectables(course, daysNum: 1).Single().Value);
-                    options.Selectables = PreparationComponentHelper.GetLectureSelectables(course, closestDate);
-                }
-                else
-                {
-                    closestDate = CalendarExtensions.ParseDate(PreparationComponentHelper.GetDateSelectables(user, daysNum: 1).Single().Value);
-                    options.Selectables = PreparationComponentHelper.GetLectureSelectables(user, closestDate);
-                }
+                var closestDate = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, dayRange: 1, scheduledOnly: true);
+                options.Selectables = PreparationComponentHelper.GetSelectables(closestDate);
 
                 string msg = $"Δεν υπάρχουν διαλέξεις στις {dateToPrepareFor:d/M}";
                 if (singleCourse)

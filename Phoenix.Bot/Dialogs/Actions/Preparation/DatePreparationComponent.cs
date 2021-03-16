@@ -2,51 +2,54 @@
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Phoenix.Bot.Utilities.Dialogs.PreparationComponentHelper;
 
 namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class DatePreparationComponent : PreparationComponent
     {
-        private readonly AspNetUserRepository userRepository;
         private readonly CourseRepository courseRepository;
+        private readonly LectureRepository lectureRepository;
 
         public DatePreparationComponent(PhoenixContext phoenixContext)
             : base(BotActionPreparation.DateSelection) 
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
             this.courseRepository = new CourseRepository(phoenixContext);
+            this.lectureRepository = new LectureRepository(phoenixContext);
         }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
             bool singleCourse = !options.PrepareForUserOrCourse;
+            IQueryable<DateTime> dates;
 
             if (singleCourse)
             {
-                var course = await courseRepository.Find(options.IdToPrepareFor);
                 if (options.SelectTheClosestFutureDate)
-                    options.Selectables = GetDateSelectables(course, LectureTimeline.Future, daysNum: 1);
+                    dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Future, dayRange: 1, scheduledOnly: true);
                 else
-                    options.Selectables = GetDateSelectables(course);
+                    dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, scheduledOnly: true);
             }
             else
             {
-                var user = await userRepository.Find(options.IdToPrepareFor);
+                int[] courseIds = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
                 if (options.SelectTheClosestFutureDate)
-                    options.Selectables = GetDateSelectables(user, LectureTimeline.Future, daysNum: 1);
+                    dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Future, dayRange: 1);
                 else
-                    options.Selectables = GetDateSelectables(user);
+                    dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime);
             }
+
+            options.Selectables = PreparationComponentHelper.GetSelectables(dates);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {

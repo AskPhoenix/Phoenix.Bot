@@ -2,6 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main.Models;
@@ -25,9 +26,9 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            var user = await userRepository.Find(options.IdToPrepareFor);
+            var children = userRepository.FindChildren(options.IdToPrepareFor);
 
-            options.Selectables = user.ParenthoodChild?.ToDictionary(p => p.ChildId, p => p.Child.User.FirstName);
+            options.Selectables = PreparationComponentHelper.GetSelectables(children);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {

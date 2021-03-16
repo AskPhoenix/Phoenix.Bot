@@ -2,6 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main.Models;
@@ -14,21 +15,20 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class GroupPreparationComponent : PreparationComponent
     {
-        private readonly AspNetUserRepository userRepository;
+        private readonly CourseRepository courseRepository;
 
         public GroupPreparationComponent (PhoenixContext phoenixContext)
             : base(BotActionPreparation.GroupSelection) 
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.courseRepository = new CourseRepository(phoenixContext);
         }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            var user = await userRepository.Find(options.IdToPrepareFor);
+            var courses = courseRepository.FindForTeacher(options.IdToPrepareFor);
 
-            options.Selectables = user.TeacherCourse?
-                .ToDictionary(tc => tc.CourseId, tc => tc.Course.Name + " - " + tc.Course.Group);
+            options.Selectables = PreparationComponentHelper.GetSelectables(courses, showByGroup: true);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {

@@ -2,8 +2,8 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
@@ -16,27 +16,22 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {
     public class CoursePreparationComponent : PreparationComponent
     {
-        private readonly AspNetUserRepository userRepository;
+        private readonly CourseRepository courseRepository;
 
         public CoursePreparationComponent (PhoenixContext phoenixContext)
             : base(BotActionPreparation.CourseSelection) 
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.courseRepository = new CourseRepository(phoenixContext);
         }
 
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            var user = await userRepository.Find(options.IdToPrepareFor);
-
             var courses = options.UserRole.IsStaff()
-                ? user.TeacherCourse?.Select(tc => tc.Course)
-                : user.StudentCourse?.Select(sc => sc.Course);
+                ? courseRepository.FindForTeacher(options.IdToPrepareFor)
+                : courseRepository.FindForStudent(options.IdToPrepareFor);
 
-            options.Selectables = courses?.
-                //GroupBy(c => c.Name.ToUnaccented().ToLower()).        // Distinct Courses by their Name
-                //Select(g => g.First()).
-                ToDictionary(c => c.Id, tc => tc.NameWithSubcourse);
+            options.Selectables = PreparationComponentHelper.GetSelectables(courses);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
