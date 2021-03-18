@@ -59,43 +59,48 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             switch (nextPreparation)
             {
                 case BotActionPreparation.AffiliatedUserSelection:
-                    if (preparationOptions.AffiliatedUserId != null)
-                        return await stepContext.NextAsync(preparationOptions.AffiliatedUserId, cancellationToken);
+                    if (preparationOptions.AffiliatedUserId.HasValue)
+                        return await stepContext.NextAsync(preparationOptions.AffiliatedUserId.Value, cancellationToken);
 
-                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
+                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     break;
                 case BotActionPreparation.CourseSelection:
-                    if (preparationOptions.CourseId != null)
-                        return await stepContext.NextAsync(preparationOptions.CourseId, cancellationToken);
+                    if (preparationOptions.CourseId.HasValue)
+                        return await stepContext.NextAsync(preparationOptions.CourseId.Value, cancellationToken);
 
                     int userIdToPrepareFor = preparationOptions.UserRole == Role.Parent
-                        ? (preparationOptions.AffiliatedUserId ?? 0) 
+                        ? preparationOptions.AffiliatedUserId.Value
                         : preparationOptions.UserId;
-                    preparationComponentOptions = new PreparationComponentOptions(userIdToPrepareFor, true, preparationOptions.GetUserOptions());
+                    preparationComponentOptions = new PreparationComponentOptions(userIdToPrepareFor, true, preparationOptions);
                     break;
                 case BotActionPreparation.GroupSelection:
-                    if (preparationOptions.CourseId != null)
-                        return await stepContext.NextAsync(preparationOptions.CourseId, cancellationToken);
+                    if (preparationOptions.CourseId.HasValue)
+                        return await stepContext.NextAsync(preparationOptions.CourseId.Value, cancellationToken);
 
-                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
+                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     break;
                 case BotActionPreparation.DateSelection:
-                    if (preparationOptions.DateToPrepareFor != null)
-                        return await stepContext.NextAsync(preparationOptions.DateToPrepareFor, cancellationToken);
+                    if (preparationOptions.DateToPrepareFor.HasValue)
+                        return await stepContext.NextAsync(preparationOptions.DateToPrepareFor.Value, cancellationToken);
 
                     if (preparationOptions.UserRole.IsStaff())
-                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions.GetUserOptions());
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     else
-                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId ?? 0, false, preparationOptions.GetUserOptions());
-
-                    preparationComponentOptions.SelectTheClosestFutureDate = preparationOptions.SelectTheClosestFutureDate;
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId.Value, false, preparationOptions);
                     break;
                 case BotActionPreparation.LectureSelection:
-                    if (preparationOptions.LectureId != null)
-                        return await stepContext.NextAsync(preparationOptions.LectureId, cancellationToken);
+                    if (preparationOptions.LectureId.HasValue)
+                        return await stepContext.NextAsync(preparationOptions.LectureId.Value, cancellationToken);
 
-                    preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId ?? 0, false, 
-                        preparationOptions.DateToPrepareFor ?? DateTimeOffset.UtcNow.Date, preparationOptions.GetUserOptions());
+                    if (!preparationOptions.DateToPrepareFor.HasValue)
+                        preparationOptions.DateToPrepareFor = DateTimeOffset.UtcNow.Date;
+
+                    if (preparationOptions.UserRole.IsStaff())
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true,
+                            preparationOptions.DateToPrepareFor.Value, preparationOptions);
+                    else
+                        preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId.Value, false,
+                            preparationOptions.DateToPrepareFor.Value, preparationOptions);
                     break;
                 
                 case BotActionPreparation.NoPreparation:

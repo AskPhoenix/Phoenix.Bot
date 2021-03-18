@@ -8,6 +8,7 @@ using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             var options = stepContext.Options as PreparationComponentOptions;
             bool singleCourse = !options.PrepareForUserOrCourse;
             var dateToPrepareFor = options.DateToPrepareFor.Value;
-            IQueryable<Lecture> lectures;
+            IEnumerable<Lecture> lectures;
             
             if (singleCourse)
             {
@@ -56,7 +57,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                 else
                     msg += ".";
                 await stepContext.Context.SendActivityAsync(msg);
-                await stepContext.Context.SendActivityAsync($"Βρήκα όμως για την πιο κοντινή στις {closestDate:d/M}:");
+                await stepContext.Context.SendActivityAsync($"Βρήκα όμως για την πιο κοντινή στις {closestDate.Single():d/M}:");
             }
             
             if (options.Selectables.Count == 1)

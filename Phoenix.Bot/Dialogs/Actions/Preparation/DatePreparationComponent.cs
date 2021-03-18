@@ -9,6 +9,7 @@ using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,22 +32,16 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
         {
             var options = stepContext.Options as PreparationComponentOptions;
             bool singleCourse = !options.PrepareForUserOrCourse;
-            IQueryable<DateTime> dates;
+            IEnumerable<DateTime> dates;
 
-            if (singleCourse)
+            if (singleCourse)   // Student --> Search
             {
-                if (options.SelectTheClosestFutureDate)
-                    dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Future, dayRange: 1, scheduledOnly: true);
-                else
-                    dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, scheduledOnly: true);
+                dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Past, scheduledOnly: true);
             }
-            else
+            else                // Teacher --> Assignments
             {
                 int[] courseIds = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
-                if (options.SelectTheClosestFutureDate)
-                    dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Future, dayRange: 1);
-                else
-                    dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime);
+                dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime);
             }
 
             options.Selectables = PreparationComponentHelper.GetSelectables(dates);
@@ -55,9 +50,9 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             {
                 string msg = "Δεν υπάρχουν ακόμα διαλέξεις ";
                 if (singleCourse)
-                    msg += "για αυτό το μάθημα";
+                    msg += "για αυτό το μάθημα.";
                 else
-                    msg += "για κάποιο μάθημα";
+                    msg += "για κάποιο μάθημα.";
 
                 await stepContext.Context.SendActivityAsync(msg);
                 return await stepContext.CancelAllDialogsAsync(cancellationToken);
@@ -73,14 +68,6 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             var options = stepContext.Options as PreparationComponentOptions;
             bool singleCourse = !options.PrepareForUserOrCourse;
 
-            string msg = "Παρακάτω θα βρεις μερικές από τις πιο κοντινές ημερομηνίες ";
-            if (singleCourse)
-                msg += "που είχες μάθημα.";
-            else
-                msg += "που είχες ή θα έχεις μάθημα";
-
-            await stepContext.Context.SendActivityAsync(msg);
-            
             var choices = ChoiceFactory.ToChoices(options.Selectables.Values.ToList());
             var today = DateTimeOffset.UtcNow.Date;
 
@@ -105,10 +92,9 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                 }
             }
 
-            var prompt = ChoiceFactory.SuggestedAction(choices,
-                text: "Επίλεξε μία από αυτές ή πληκτρολόγησε κάποια άλλη παρακάτω στη μορφή ηη/μμ (π.χ. 24/4):");
-            var repropmt = ChoiceFactory.SuggestedAction(choices,
-                text: "Η επιθυμητή ημερομηνία θα πρέπει να είναι στη μορφή ημέρα/μήνας (π.χ. 24/4)):");
+            await stepContext.Context.SendActivityAsync("Για ποια μέρα θα ήθελες να δεις τις εργασίες για το σπίτι;");
+            var prompt = ChoiceFactory.SuggestedAction(choices, text: "Επίλεξε μία από τις παρακάτω πρόσφατες ημερομηνίες ή γράψε κάποια άλλη:");
+            var repropmt = ChoiceFactory.SuggestedAction(choices, text: "Η επιθυμητή ημερομηνία θα πρέπει να είναι στη μορφή ημέρα/μήνας:");
 
             return await stepContext.PromptAsync(
                 nameof(DateTimePrompt),
@@ -121,11 +107,9 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
         protected override async Task<DialogTurnResult> SelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var options = stepContext.Options as PreparationComponentOptions;
-            var selectedIndex = (stepContext.Result as FoundChoice).Index;
-            var selectedDate = options.Selectables.ElementAt(selectedIndex).Value;
+            var resolvedDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
 
-            return await stepContext.EndDialogAsync(CalendarExtensions.ParseDate(selectedDate), cancellationToken);
+            return await stepContext.EndDialogAsync(resolvedDate, cancellationToken);
         }
     }
 }

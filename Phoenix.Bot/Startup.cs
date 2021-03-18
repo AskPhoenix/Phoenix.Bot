@@ -54,7 +54,6 @@ namespace Phoenix.Bot
             services.AddScoped<LecturePreparationComponent>();
 
             services.AddScoped<AssignmentsDialog>();
-            services.AddScoped<SearchDialog>();
             services.AddScoped<ScheduleDialog>();
             services.AddScoped<GradesDialog>();
             services.AddScoped<AccessDialog>();
