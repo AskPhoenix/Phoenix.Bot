@@ -13,6 +13,7 @@ using Microsoft.Bot.Schema;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.DataHandle.Main;
 using Phoenix.Bot.Utilities.State.Options;
+using System;
 
 namespace Phoenix.Bot.Dialogs.Authentication
 {
@@ -68,10 +69,10 @@ namespace Phoenix.Bot.Dialogs.Authentication
             var phoneUsers = userRepository.Find().
                 Include(u => u.User).
                 Include(u => u.AspNetUserLogins).
-                Where(u => u.PhoneNumber == phone)?.
+                Where(u => u.PhoneNumber == phone).
                 Where(u => u.UserSchool.Any(us => us.School.FacebookPageId == activity.Recipient.Id));
 
-            var phoneOwner = phoneUsers?.
+            var phoneOwner = phoneUsers.
                 SingleOrDefault(u => u.User.IsSelfDetermined);
 
             if (phoneOwner == default)
@@ -87,7 +88,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
             bool providerKeyBelongsToOwner = ownerLogins?.Any(l => l.ProviderKey == activity.From.Id) ?? false;
 
             //Verification of the owner
-            if (ownerLogins == default || ownerLogins.All(l => !l.IsActive) || providerKeyBelongsToOwner)
+            if (ownerLogins == default || !ownerLogins.Any() || ownerLogins.All(l => !l.IsActive) || providerKeyBelongsToOwner)
             {
                 if (phoneUsers.Count() > 1 && !providerKeyBelongsToOwner)
                 {
@@ -101,10 +102,25 @@ namespace Phoenix.Bot.Dialogs.Authentication
             }
 
             //Verify another member
-            authenticationOptions.Codes = phoneUsers.
-                Where(u => !u.User.IsSelfDetermined).
-                Select(u => u.User.IdentifierCode).
-                ToArray();
+            var nonPhoneOwnerUsers = phoneUsers.Where(u => !u.User.IsSelfDetermined);
+            if (!nonPhoneOwnerUsers.Any())
+            {
+                await stepContext.Context.SendActivityAsync("Ο αριθμός αυτός δεν έχει συσχετιστεί με άλλους χρήστες.");
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+            }
+
+            authenticationOptions.Codes = nonPhoneOwnerUsers.ToDictionary(u => u.Id, u => u.User.IdentifierCode);
+            authenticationOptions.CodesCreatedAt = nonPhoneOwnerUsers.ToDictionary(u => u.Id, u => u.User.IdentifierCodeCreatedAt);
+            
+            if (authenticationOptions.Codes.All(c => string.IsNullOrEmpty(c.Value)) 
+                || authenticationOptions.CodesCreatedAt.All(cc => (DateTimeOffset.UtcNow - cc.Value.Value).Minutes > AuthenticationOptions.CodeDuration))
+            {
+                await stepContext.Context.SendActivityAsync("Δεν υπάρχουν ενεργοί κωδικοί επαλήθευσης προς το παρόν.");
+                await stepContext.Context.SendActivityAsync("Επικοινωνήστε με τον ιδιοκτήτη του αριθμού, " +
+                    "ώστε να δημιουργήσει έναν κωδικό για να συνδεθείτε και προσπαθήστε ξανά.");
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+            }
+
             authenticationOptions.IsOwnerVerification = false;
             return await stepContext.BeginDialogAsync(nameof(VerificationDialog), authenticationOptions, cancellationToken);
         }
@@ -125,7 +141,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                 return await stepContext.BeginDialogAsync(nameof(VerificationDialog), authenticationOptions, cancellationToken);
             }
             
-            await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του ιδιοκτήτη του αριθμού, ώστε ενεργοποιηθούν" +
+            await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του ιδιοκτήτη του αριθμού, ώστε να ενεργοποιηθούν" +
                 " οι συνδέσεις των υπόλοιπων μελών.");
 
             authenticationOptions.Verified = false;

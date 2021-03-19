@@ -7,7 +7,6 @@ using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Sms;
-using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -96,7 +95,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
             {
                 pin = DialogsHelper.GenerateVerificationPin().ToString();
                 var sms = new SmsService(configuration["NexmoSMS:ApiKey"], configuration["NexmoSMS:ApiSecret"]);
-                await sms.SendAsync(phone, $"Το pin σου για το Phoenix είναι το {pin}.");   //TODO: και έχει διάρκεια 5 λεπτά."
+                await sms.SendAsync(phone, $"Το pin σου για το Phoenix είναι το {pin}.");   //TODO: και έχει διάρκεια 5 λεπτά.
             }
             
             stepContext.Values.Add("pin", pin);
@@ -128,6 +127,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
 
             var foundChoice = stepContext.Result as FoundChoice;
             if (foundChoice.Index == 0)
+                //TODO: Use AuthenticationOptions everywhere across the Dialog (Remove stepContext.Values["pin"])
                 return await stepContext.BeginDialogAsync(WaterfallNames.Auth.Verification.CheckCode, stepContext.Values["pin"], cancellationToken);
 
             return await stepContext.ReplaceDialogAsync(InitialDialogId, stepContext.Options, cancellationToken);
@@ -164,11 +164,15 @@ namespace Phoenix.Bot.Dialogs.Authentication
             var userData = await userDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
             userData.LoginAttempts++;
 
-            string result = stepContext.Result.ToString();
+            string result = stepContext.Result.ToString().Trim();
             
             bool valid = false;
             if (stepContext.Options is AuthenticationOptions authenticationOptions && !authenticationOptions.IsOwnerVerification)
-                valid = authenticationOptions.Codes.Contains(result);
+            {
+                valid = authenticationOptions.Codes.Any(p => p.Value == result);
+                if (valid)
+                    authenticationOptions.VerifiedCode = result;
+            }
             else if (stepContext.Options is string pin)
                 valid = result == pin;
 

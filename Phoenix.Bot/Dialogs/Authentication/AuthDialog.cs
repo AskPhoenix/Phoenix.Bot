@@ -59,6 +59,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
 
             if (authenticationOptions.Verified)
             {
+                // TODO: Return the VerifiedUserId through AuthenticationOptions, so that the following call is not needed
                 var verifiedUser = userRepository.Find().
                     Where(u => u.PhoneNumber == authenticationOptions.Phone).
                     Where(u => u.UserSchool.Any(us => us.School.FacebookPageId == stepContext.Context.Activity.Recipient.Id)).
