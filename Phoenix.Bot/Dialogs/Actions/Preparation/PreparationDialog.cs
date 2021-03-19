@@ -80,6 +80,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     break;
                 case BotActionPreparation.DateSelection:
+                case BotActionPreparation.DateExamSelection:
                     if (preparationOptions.DateToPrepareFor.HasValue)
                         return await stepContext.NextAsync(preparationOptions.DateToPrepareFor.Value, cancellationToken);
 
@@ -87,8 +88,11 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     else
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId.Value, false, preparationOptions);
+
+                    preparationComponentOptions.ExamsOnly = nextPreparation == BotActionPreparation.DateExamSelection;
                     break;
                 case BotActionPreparation.LectureSelection:
+                case BotActionPreparation.LectureExamSelection:
                     if (preparationOptions.LectureId.HasValue)
                         return await stepContext.NextAsync(preparationOptions.LectureId.Value, cancellationToken);
 
@@ -101,6 +105,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     else
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId.Value, false,
                             preparationOptions.DateToPrepareFor.Value, preparationOptions);
+
+                    preparationComponentOptions.ExamsOnly = nextPreparation == BotActionPreparation.LectureExamSelection;
                     break;
                 
                 case BotActionPreparation.NoPreparation:

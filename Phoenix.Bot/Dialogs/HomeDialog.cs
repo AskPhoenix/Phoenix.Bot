@@ -69,7 +69,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
-                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRole),
+                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRole, removePendingActions: true),
                     Style = ListStyle.SuggestedAction
                 },
                 cancellationToken);
@@ -79,16 +79,16 @@ namespace Phoenix.Bot.Dialogs
         {
             var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                homeOptions.Action = BotActionHelper.GetActions(homeOptions.UserRole).ElementAt(foundChoice.Index);
+                homeOptions.Action = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true).ElementAt(foundChoice.Index);
 
-            bool isValidAction = BotActionHelper.GetActions(homeOptions.UserRole).Contains(homeOptions.Action);
+            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action);
             if (!isValidAction)
             {
                 await stepContext.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            var preparations = BotActionPreparationHelper.GetPreparationsForAction(homeOptions.Action, homeOptions.UserRole);
+            var preparations = BotActionPreparationHelper.GetPreparations(homeOptions.Action, homeOptions.UserRole);
             var preparationOptions = new PreparationOptions(preparations, homeOptions);
 
             return await stepContext.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, cancellationToken);
@@ -108,13 +108,15 @@ namespace Phoenix.Bot.Dialogs
                     return await stepContext.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, cancellationToken);
                 case BotAction.Supplementary:
                     goto default;
-                case BotAction.Search:
+                case BotAction.SearchExercises:
                     assignmentsOptions = new AssignmentsOptions(actionOptions, search: true);
                     return await stepContext.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, cancellationToken);
 
                 case BotAction.Schedule:
                     return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), actionOptions, cancellationToken);
                 case BotAction.Grades:
+                    return await stepContext.BeginDialogAsync(nameof(GradesDialog), actionOptions, cancellationToken);
+                case BotAction.SearchExams:
                     return await stepContext.BeginDialogAsync(nameof(GradesDialog), actionOptions, cancellationToken);
 
                 case BotAction.Access:

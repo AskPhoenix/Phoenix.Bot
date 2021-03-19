@@ -36,26 +36,28 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             
             if (singleCourse)
             {
-                lectures = lectureRepository.FindMany(options.IdToPrepareFor, dateToPrepareFor.Date, scheduledOnly: true);
+                lectures = lectureRepository.FindMany(options.IdToPrepareFor, dateToPrepareFor.Date, 
+                    scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
             else
             {
                 int[] courses = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
-                lectures = lectureRepository.FindMany(courses, dateToPrepareFor.Date, scheduledOnly: true);
+                lectures = lectureRepository.FindMany(courses, dateToPrepareFor.Date, 
+                    scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
 
             options.Selectables = PreparationComponentHelper.GetSelectables(lectures);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
-                var closestDate = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, dayRange: 1, scheduledOnly: true);
+                var closestDate = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, dayRange: 1, 
+                    scheduledOnly: true, withExamsOnly: options.ExamsOnly);
                 options.Selectables = PreparationComponentHelper.GetSelectables(closestDate);
 
-                string msg = $"Δεν υπάρχουν διαλέξεις στις {dateToPrepareFor:d/M}";
-                if (singleCourse)
-                    msg += " για αυτό το μάθημα.";
-                else
-                    msg += ".";
+                string msg = "Δεν υπάρχουν " +
+                    (options.ExamsOnly ? "διαγωνίσματα " : "διαλέξεις ") + $"στις {dateToPrepareFor:d/M} " +
+                    (singleCourse ? "για αυτό το μάθημα." : ".");
+                
                 await stepContext.Context.SendActivityAsync(msg);
                 await stepContext.Context.SendActivityAsync($"Βρήκα όμως για την πιο κοντινή στις {closestDate.Single():d/M}:");
             }

@@ -34,25 +34,25 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             bool singleCourse = !options.PrepareForUserOrCourse;
             IEnumerable<DateTime> dates;
 
-            if (singleCourse)   // Student --> Search
+            if (singleCourse)   // Student --> Search, Grades
             {
-                dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Past, scheduledOnly: true);
+                dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Past, 
+                    scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
-            else                // Teacher --> Assignments
+            else                // Teacher --> Assignments, Grades
             {
                 int[] courseIds = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
-                dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime);
+                dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime, 
+                    scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
 
             options.Selectables = PreparationComponentHelper.GetSelectables(dates);
 
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
-                string msg = "Δεν υπάρχουν ακόμα διαλέξεις ";
-                if (singleCourse)
-                    msg += "για αυτό το μάθημα.";
-                else
-                    msg += "για κάποιο μάθημα.";
+                string msg = "Δεν υπάρχουν ακόμα " +
+                    (options.ExamsOnly ? "διαγωνίσματα " : "διαλέξεις ") + "για " +
+                    (singleCourse ? "αυτό το " : "κάποιο ") + "μάθημα.";
 
                 await stepContext.Context.SendActivityAsync(msg);
                 return await stepContext.CancelAllDialogsAsync(cancellationToken);

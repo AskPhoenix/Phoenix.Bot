@@ -5,7 +5,6 @@ using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
@@ -33,8 +32,6 @@ namespace Phoenix.Bot.Dialogs.Actions
             this.examRepository = new ExamRepository(phoenixContext);
             this.lectureRepository = new LectureRepository(phoenixContext);
             this.lectureRepository.Include(l => l.Course);
-
-            AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Assignments.Homework,
                 new WaterfallStep[]
