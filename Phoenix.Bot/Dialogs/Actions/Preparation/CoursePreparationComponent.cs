@@ -27,9 +27,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
         protected override async Task<DialogTurnResult> InitializeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as PreparationComponentOptions;
-            var courses = options.UserRole.IsStaff()
-                ? courseRepository.FindForTeacher(options.IdToPrepareFor)
-                : courseRepository.FindForStudent(options.IdToPrepareFor);
+            var courses = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRole.IsStaff());
 
             options.Selectables = PreparationComponentHelper.GetSelectables(courses);
 

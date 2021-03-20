@@ -41,8 +41,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             }
             else
             {
-                int[] courses = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
-                lectures = lectureRepository.FindMany(courses, dateToPrepareFor.Date, 
+                int[] courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRole.IsStaff()).Select(c => c.Id).ToArray();
+                lectures = lectureRepository.FindMany(courseIds, dateToPrepareFor.Date,
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
 

@@ -262,7 +262,7 @@ namespace Phoenix.Bot.Dialogs.Actions
                     new HeroCard(title: "🔮 Μελλοντικά", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε πότε είναι") + " τα επόμενα διαγωνίσματα."),
                     new HeroCard(title: "🏃 Προετοιμασία", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " την ύλη και τι χρειάζεται διάβασμα για ένα προγραμματισμένο διαγώνισμα.")
                 },
-                BotAction.Schedule => new HeroCard[5]
+                BotAction.ScheduleWeekly => new HeroCard[5]
                 {
                     new HeroCard(title: "📅 Πρόγραμμα", subtitle: "Μάθε το πρόγραμμα των μαθημάτων και ενημερώσου για τις αλλαγές του."),
                     new HeroCard(title: "🌞 Σημερινό", subtitle: "Δες τις ώρες και τις αίθουσες για τα σημερινά μαθήματα."),

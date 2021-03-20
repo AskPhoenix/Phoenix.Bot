@@ -41,7 +41,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             }
             else                // Teacher --> Assignments, Grades
             {
-                int[] courseIds = courseRepository.FindForTeacher(options.IdToPrepareFor).Select(c => c.Id).ToArray();
+                int[] courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRole.IsStaff()).Select(c => c.Id).ToArray();
                 dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime, 
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
@@ -92,8 +92,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                 }
             }
 
-            await stepContext.Context.SendActivityAsync("Για ποια μέρα θα ήθελες να δεις τις εργασίες για το σπίτι;");
-            var prompt = ChoiceFactory.SuggestedAction(choices, text: "Επίλεξε μία από τις παρακάτω πρόσφατες ημερομηνίες ή γράψε κάποια άλλη:");
+            //await stepContext.Context.SendActivityAsync("Για ποια μέρα θα ήθελες να δεις τις εργασίες για το σπίτι;");
+            var prompt = ChoiceFactory.SuggestedAction(choices, text: "Επίλεξε μία από τις παρακάτω κοντινές ημερομηνίες ή γράψε κάποια άλλη:");
             var repropmt = ChoiceFactory.SuggestedAction(choices, text: "Η επιθυμητή ημερομηνία θα πρέπει να είναι στη μορφή ημέρα/μήνας:");
 
             return await stepContext.PromptAsync(

@@ -56,6 +56,9 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             PreparationComponentOptions preparationComponentOptions;
 
+            //TODO: Customize Preparation Components by sending a more specific question/message to the user
+            //depending on the reason they're asked to select for
+
             switch (nextPreparation)
             {
                 case BotActionPreparation.AffiliatedUserSelection:
@@ -84,7 +87,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (preparationOptions.DateToPrepareFor.HasValue)
                         return await stepContext.NextAsync(preparationOptions.DateToPrepareFor.Value, cancellationToken);
 
-                    if (preparationOptions.UserRole.IsStaff())
+                    //if (preparationOptions.UserRole.IsStaff()) --> Teachers never get to select a specific course
+                    if (!preparationOptions.CourseId.HasValue)
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true, preparationOptions);
                     else
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.CourseId.Value, false, preparationOptions);
@@ -99,7 +103,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (!preparationOptions.DateToPrepareFor.HasValue)
                         preparationOptions.DateToPrepareFor = DateTimeOffset.UtcNow.Date;
 
-                    if (preparationOptions.UserRole.IsStaff())
+                    //if (preparationOptions.UserRole.IsStaff()) --> Teachers never get to select a specific course
+                    if (!preparationOptions.CourseId.HasValue)
                         preparationComponentOptions = new PreparationComponentOptions(preparationOptions.UserId, true,
                             preparationOptions.DateToPrepareFor.Value, preparationOptions);
                     else

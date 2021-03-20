@@ -49,12 +49,9 @@ namespace Phoenix.Bot.Dialogs.Authentication
 
         protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
-            if (options is not AuthenticationOptions authenticationOptions)
-                return innerDc.EndDialogAsync(false);
-
-            InitialDialogId = authenticationOptions.IsOwnerVerification 
-                ? WaterfallNames.Auth.Verification.SendCode 
-                : WaterfallNames.Auth.Verification.CheckCode;
+            var authenticationOptions = options as AuthenticationOptions;
+            if (!authenticationOptions.IsOwnerVerification)
+                InitialDialogId = WaterfallNames.Auth.Verification.CheckCode;
 
             return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }

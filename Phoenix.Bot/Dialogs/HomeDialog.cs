@@ -81,7 +81,8 @@ namespace Phoenix.Bot.Dialogs
             if (stepContext.Result is FoundChoice foundChoice)
                 homeOptions.Action = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true).ElementAt(foundChoice.Index);
 
-            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action);
+            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action) 
+                || homeOptions.Action.IsNonMenuAction();
             if (!isValidAction)
             {
                 await stepContext.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
@@ -99,21 +100,19 @@ namespace Phoenix.Bot.Dialogs
             var homeOptions = stepContext.Options as HomeOptions;
             var actionOptions = stepContext.Result as ActionOptions;
 
-            AssignmentsOptions assignmentsOptions;
-
             switch (homeOptions.Action)
             {
+                case BotAction.SearchExercises:
                 case BotAction.Assignments:
-                    assignmentsOptions = new AssignmentsOptions(actionOptions, search: false);
+                    AssignmentsOptions assignmentsOptions = new(actionOptions, homeOptions.Action);
                     return await stepContext.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, cancellationToken);
                 case BotAction.Supplementary:
                     goto default;
-                case BotAction.SearchExercises:
-                    assignmentsOptions = new AssignmentsOptions(actionOptions, search: true);
-                    return await stepContext.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, cancellationToken);
 
-                case BotAction.Schedule:
-                    return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), actionOptions, cancellationToken);
+                case BotAction.ScheduleDaily:
+                case BotAction.ScheduleWeekly:
+                    ScheduleOptions scheduleOptions = new(actionOptions, homeOptions.Action);
+                    return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), scheduleOptions, cancellationToken);
                 case BotAction.Grades:
                     return await stepContext.BeginDialogAsync(nameof(GradesDialog), actionOptions, cancellationToken);
                 case BotAction.SearchExams:
@@ -149,6 +148,14 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var homeOptions = stepContext.Options as HomeOptions;
+            var resultAction = stepContext.Result as BotAction?;
+
+            if (stepContext.Result is BotAction nextAction)
+            {
+                homeOptions.Action = nextAction;
+                return await stepContext.ReplaceDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
+            }
+
             if (homeOptions.Action != BotAction.Feedback && homeOptions.Action != BotAction.Help && new Random().Next(3) == 0)
             {
                 var feedbackOptions = new FeedbackOptions() { BotAskedForFeedback = true, UserId = homeOptions.UserId };

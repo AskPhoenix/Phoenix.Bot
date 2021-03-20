@@ -57,13 +57,13 @@ namespace Phoenix.Bot.Dialogs.Actions
             InitialDialogId = WaterfallNames.Feedback.Top;
         }
 
-        protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
+        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
         {
             var feedbackOptions = options as FeedbackOptions;
             if (feedbackOptions.BotAskedForFeedback)
                 InitialDialogId = WaterfallNames.Feedback.Ask;
 
-            return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
+            return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
         #region Ask Waterfall Dialog
