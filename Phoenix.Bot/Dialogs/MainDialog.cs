@@ -76,7 +76,18 @@ namespace Phoenix.Bot.Dialogs
 
             var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
             if (user == null)
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+            {
+                await stepContext.Context.SendActivityAsync("Δυστυχώς υπήρξε ένα πρόβλημα. Παρακαλώ προσπαθήστε ξανά αργότερα " +
+                    "ή επικοινωνήστε με το φροντιστήριό σας.");
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+            }
+            //TODO: Reset conversation state and restart Main Dialog if CancelAllDialogsAsync is called anywhere
+            if (role == Role.Parent && !userRepository.AnyAffiliatedUsers(user.Id))
+            {
+                await stepContext.Context.SendActivityAsync("Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.");
+                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινωνήστε με το φροντιστήριό σας για την επίλυση του προβλήματος.");
+                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+            }
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
             var homeOptions = new HomeOptions(user.Id, role) { Action = BotAction.NoAction };

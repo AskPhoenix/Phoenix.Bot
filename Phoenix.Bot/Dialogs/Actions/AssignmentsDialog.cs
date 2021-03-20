@@ -23,8 +23,6 @@ namespace Phoenix.Bot.Dialogs.Actions
         private readonly ExamRepository examRepository;
         private readonly LectureRepository lectureRepository;
 
-        private const string AdaptiveCardDarkBackgroundImage = "https://www.bot.askphoenix.gr/assets/4f5d75_sq.png";
-
         public AssignmentsDialog(PhoenixContext phoenixContext)
             : base(nameof(AssignmentsDialog))
         {
@@ -41,6 +39,8 @@ namespace Phoenix.Bot.Dialogs.Actions
 
             InitialDialogId = WaterfallNames.Actions.Assignments.Homework;
         }
+
+        #region Homework Waterfall Dialog
 
         private async Task<DialogTurnResult> HomeworkStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -127,7 +127,7 @@ namespace Phoenix.Bot.Dialogs.Actions
 
                     var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
                     {
-                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardDarkBackgroundImage)
+                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
                     };
 
                     string title = groupsNum == 1 ? "Εργασία" : "Εργασίες";
@@ -175,7 +175,7 @@ namespace Phoenix.Bot.Dialogs.Actions
 
                     var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
                     {
-                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardDarkBackgroundImage)
+                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
                     };
 
                     string title = groupsNum == 1 ? "Διαγώνισμα" : "Διαγωνίσματα";
@@ -209,5 +209,7 @@ namespace Phoenix.Bot.Dialogs.Actions
 
             return cards;
         }
+
+        #endregion
     }
 }

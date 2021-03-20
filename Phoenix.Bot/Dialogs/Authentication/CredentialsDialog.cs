@@ -66,6 +66,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
             var authenticationOptions = stepContext.Options as AuthenticationOptions;
             authenticationOptions.Phone = phone;
 
+            //TODO: Move to DataHandle (Repository side)
             var phoneUsers = userRepository.Find().
                 Include(u => u.User).
                 Include(u => u.AspNetUserLogins).

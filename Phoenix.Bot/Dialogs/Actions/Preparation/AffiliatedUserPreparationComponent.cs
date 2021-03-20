@@ -30,6 +30,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(children);
 
+            // TODO: Replace Count with Any()
             if (options.Selectables == null || options.Selectables.Count == 0)
             {
                 await stepContext.Context.SendActivityAsync("Δεν υπάρχουν μαθητές οι οποίοι να είναι συσχετισμένοι με τον λογαριασμό σου.");
