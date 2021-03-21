@@ -22,7 +22,7 @@ namespace Phoenix.Bot.Dialogs
             AssignmentsDialog assignmentsDialog,
             AccessDialog accessDialog,
             GradesDialog gradesDialog, ScheduleDialog scheduleDialog,
-            ExerciseDialog exerciseDialog, ExamDialog examDialog,
+            AssignmentsManagementDialog assignmentsManagementDialog,
             HelpDialog helpDialog, FeedbackDialog feedbackDialog)
             : base(nameof(HomeDialog))
         {
@@ -37,8 +37,7 @@ namespace Phoenix.Bot.Dialogs
             AddDialog(scheduleDialog);
             AddDialog(gradesDialog);
 
-            AddDialog(exerciseDialog);
-            AddDialog(examDialog);
+            AddDialog(assignmentsManagementDialog);
 
             AddDialog(helpDialog);
             AddDialog(feedbackDialog);
@@ -122,9 +121,9 @@ namespace Phoenix.Bot.Dialogs
                     return await stepContext.BeginDialogAsync(nameof(AccessDialog), actionOptions, cancellationToken);
 
                 case BotAction.Exercises:
-                    return await stepContext.BeginDialogAsync(nameof(ExerciseDialog), actionOptions, cancellationToken);
                 case BotAction.Exams:
-                    return await stepContext.BeginDialogAsync(nameof(ExamDialog), actionOptions, cancellationToken);
+                    AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, homeOptions.Action);
+                    return await stepContext.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, cancellationToken);
                 case BotAction.Broadcast:
                     goto default;
 

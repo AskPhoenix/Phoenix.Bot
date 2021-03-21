@@ -57,11 +57,10 @@ namespace Phoenix.Bot
             services.AddScoped<ScheduleDialog>();
             services.AddScoped<GradesDialog>();
             services.AddScoped<AccessDialog>();
+            services.AddScoped<AssignmentsManagementDialog>();
 
             services.AddScoped<HelpDialog>();
             services.AddScoped<FeedbackDialog>();
-            services.AddScoped<ExerciseDialog>();
-            services.AddScoped<ExamDialog>();
 
             services.AddTransient<IBot, DialogBot<MainDialog>>();
 

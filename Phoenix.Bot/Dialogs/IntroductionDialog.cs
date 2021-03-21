@@ -7,7 +7,6 @@ using Phoenix.Bot.Dialogs.Authentication;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Miscellaneous;
-using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
@@ -21,17 +20,13 @@ namespace Phoenix.Bot.Dialogs
     {
         private readonly SchoolRepository schoolRepository;
         private readonly AspNetUserRepository userRepository;
-        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
-        private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
 
-        public IntroductionDialog(PhoenixContext phoenixContext, UserState userState, ConversationState conversationState,
+        public IntroductionDialog(PhoenixContext phoenixContext,
             AuthDialog authDialog, HelpDialog helpDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
             this.userRepository = new AspNetUserRepository(phoenixContext);
-            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
-            this.mainStateAccesor = conversationState.CreateProperty<MainState>(nameof(MainState));
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 

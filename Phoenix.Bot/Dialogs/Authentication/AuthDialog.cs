@@ -12,6 +12,8 @@ using Phoenix.Bot.Utilities.State.Options;
 using System;
 using Phoenix.DataHandle.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Bot.Builder;
+using Phoenix.Bot.Utilities.State;
 
 namespace Phoenix.Bot.Dialogs.Authentication
 {
@@ -20,15 +22,18 @@ namespace Phoenix.Bot.Dialogs.Authentication
         private readonly IConfiguration configuration;
         private readonly AspNetUserRepository userRepository;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
         private readonly ApplicationStore appStore;
 
-        public AuthDialog(IConfiguration configuration, PhoenixContext phoenixContext, UserManager<ApplicationUser> userManager, ApplicationDbContext appContext,
+        public AuthDialog(IConfiguration configuration, PhoenixContext phoenixContext, ApplicationDbContext appContext,
+            UserManager<ApplicationUser> userManager, UserState userState,
             CredentialsDialog credentialsDialog)
             : base(nameof(AuthDialog))
         {
             this.configuration = configuration;
             this.userRepository = new AspNetUserRepository(phoenixContext);
             this.userManager = userManager;
+            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
             this.appStore = new ApplicationStore(appContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
@@ -66,7 +71,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                     Single(u => u.User.IdentifierCode == authenticationOptions.VerifiedCode);
 
                 verifiedUser.User.TermsAccepted = true;
-                verifiedUser.PhoneNumberConfirmed = true;
+                verifiedUser.PhoneNumberConfirmed = authenticationOptions.IsOwnerVerification;
                 userRepository.Update(verifiedUser);
 
                 var providerName = stepContext.Context.Activity.ChannelId.ToLoginProvider().GetProviderName();
@@ -81,7 +86,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                 userRepository.LinkLogin(login);
 
                 // Create password for Teachers to log into the extension
-                if (userRepository.HasRole(verifiedUser, Role.Teacher))
+                if (userRepository.FindRoles(verifiedUser).Any(r => r.Type.IsStaff()))
                 {
                     var appUser = await appStore.FindByIdAsync(verifiedUser.Id.ToString());
                     if (!await userManager.HasPasswordAsync(appUser))
@@ -90,6 +95,11 @@ namespace Phoenix.Bot.Dialogs.Authentication
                         string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
                         password = new string(password.Where(c => !invalidPasswordChars.Contains(c)).ToArray()).Substring(0, 8);
                         await userManager.AddPasswordAsync(appUser, password);
+
+                        var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+                        userData.RevealExtensionPassword = true;
+                        userData.TempExtensionPassword = password;
+                        await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
                     }
                 }
             }

@@ -44,8 +44,8 @@ namespace Phoenix.Bot.Dialogs.Actions
             {
                 BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
             };
-            card.Body.Add(new AdaptiveTextBlockHeaderLight($"Κωδικοί επαλήθευσης"));
-            card.Body.Add(new AdaptiveTextBlockHeaderLight($"Ισχύουν για τα επόμενα 5 λεπτά και είναι μοναδικοί ανά χρήστη")
+            card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικοί επαλήθευσης"));
+            card.Body.Add(new AdaptiveTextBlockHeaderLight("Ισχύουν για τα επόμενα 5 λεπτά και είναι μοναδικοί ανά χρήστη")
             {
                 Size = AdaptiveTextSize.Medium 
             });
