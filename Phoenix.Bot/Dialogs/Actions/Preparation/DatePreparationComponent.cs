@@ -48,14 +48,14 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(dates);
 
-            if (options.Selectables == null || options.Selectables.Count == 0)
+            if (options.Selectables is null || !options.Selectables.Any())
             {
                 string msg = "Δεν υπάρχουν ακόμα " +
                     (options.ExamsOnly ? "διαγωνίσματα " : "διαλέξεις ") + "για " +
                     (singleCourse ? "αυτό το " : "κάποιο ") + "μάθημα.";
 
                 await stepContext.Context.SendActivityAsync(msg);
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
             else if (options.Selectables.Count == 1)
                 return await stepContext.EndDialogAsync(CalendarExtensions.ParseDate(options.Selectables.Single().Value), cancellationToken);

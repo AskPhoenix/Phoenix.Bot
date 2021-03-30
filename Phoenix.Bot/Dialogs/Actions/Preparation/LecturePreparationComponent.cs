@@ -48,7 +48,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(lectures);
 
-            if (options.Selectables == null || options.Selectables.Count == 0)
+            if (options.Selectables is null || !options.Selectables.Any())
             {
                 var closestDate = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Anytime, dayRange: 1, 
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);

@@ -31,14 +31,14 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(courses);
 
-            if (options.Selectables == null || options.Selectables.Count == 0)
+            if (options.Selectables is null || !options.Selectables.Any())
             {
                 if (options.IsPreparingForSomeoneElse)
                     await stepContext.Context.SendActivityAsync("Δεν έχουν προστεθεί μαθήματα για τον συγκεκριμένο μαθητή.");
                 else
                     await stepContext.Context.SendActivityAsync("Δεν έχεις εγγραφεί ακόμη σε κάποιο μάθημα.");
 
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
             else if (options.Selectables.Count == 1)
                 return await stepContext.EndDialogAsync(options.Selectables.Single().Key);

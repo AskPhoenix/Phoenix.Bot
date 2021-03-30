@@ -30,10 +30,10 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(courses, showByGroup: true);
 
-            if (options.Selectables == null || options.Selectables.Count == 0)
+            if (options.Selectables is null || !options.Selectables.Any())
             {
                 await stepContext.Context.SendActivityAsync("Δεν έχεις αναλάβει ακόμη τη διδασκαλία κάποιου μαθήματος.");
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
             else if (options.Selectables.Count == 1)
                 return await stepContext.EndDialogAsync(options.Selectables.Single().Key);

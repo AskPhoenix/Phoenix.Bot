@@ -122,7 +122,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             if (preparationComponentOptions == null)
             {
                 await stepContext.Context.SendActivityAsync("Δυστυχώς υπήρξε κάποιο πρόβλημα. Ας ξεκινήσουμε από την αρχή.");
-                return await stepContext.CancelAllDialogsAsync();
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
             string nextPreparationDialogName = nextPreparation.ToString() + "_" + nameof(PreparationComponent);
@@ -131,23 +131,26 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
         private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            if (stepContext.Result is null)
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+
             var preparationOptions = stepContext.Options as PreparationOptions;
             var curPreparation = preparationOptions.GetCurrentPreparation();
 
             switch (curPreparation)
             {
                 case BotActionPreparation.AffiliatedUserSelection:
-                    preparationOptions.AffiliatedUserId = (int)stepContext.Result;
+                    preparationOptions.AffiliatedUserId = (int?)stepContext.Result;
                     break;
                 case BotActionPreparation.CourseSelection:
                 case BotActionPreparation.GroupSelection:
-                    preparationOptions.CourseId = (int)stepContext.Result;
+                    preparationOptions.CourseId = (int?)stepContext.Result;
                     break;
                 case BotActionPreparation.DateSelection:
-                    preparationOptions.DateToPrepareFor = (DateTimeOffset)stepContext.Result;
+                    preparationOptions.DateToPrepareFor = (DateTimeOffset?)stepContext.Result;
                     break;
                 case BotActionPreparation.LectureSelection:
-                    preparationOptions.LectureId = (int)stepContext.Result;
+                    preparationOptions.LectureId = (int?)stepContext.Result;
                     break;
             }
 

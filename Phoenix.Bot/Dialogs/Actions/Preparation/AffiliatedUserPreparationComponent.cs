@@ -30,11 +30,10 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             options.Selectables = PreparationComponentHelper.GetSelectables(children);
 
-            // TODO: Replace Count with Any()
-            if (options.Selectables == null || options.Selectables.Count == 0)
+            if (options.Selectables is null || !options.Selectables.Any())
             {
                 await stepContext.Context.SendActivityAsync("Δεν υπάρχουν μαθητές οι οποίοι να είναι συσχετισμένοι με τον λογαριασμό σου.");
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
             else if (options.Selectables.Count == 1) 
                 return await stepContext.EndDialogAsync(options.Selectables.Single().Key);
