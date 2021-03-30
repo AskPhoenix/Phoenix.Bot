@@ -8,16 +8,16 @@ using Phoenix.DataHandle.Repositories;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
 using Phoenix.DataHandle.Main;
-using Phoenix.Bot.Utilities.State.Options;
-using System;
 using Phoenix.DataHandle.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Bot.Builder;
 using Phoenix.Bot.Utilities.State;
+using Phoenix.Bot.Utilities.State.Options.Authentification;
+using Microsoft.EntityFrameworkCore;
 
 namespace Phoenix.Bot.Dialogs.Authentication
 {
-    public class AuthDialog : ComponentDialog
+    public class AuthenticationDialog : ComponentDialog
     {
         private readonly IConfiguration configuration;
         private readonly AspNetUserRepository userRepository;
@@ -25,13 +25,14 @@ namespace Phoenix.Bot.Dialogs.Authentication
         private readonly IStatePropertyAccessor<UserData> userDataAccesor;
         private readonly ApplicationStore appStore;
 
-        public AuthDialog(IConfiguration configuration, PhoenixContext phoenixContext, ApplicationDbContext appContext,
+        public AuthenticationDialog(IConfiguration configuration, PhoenixContext phoenixContext, ApplicationDbContext appContext,
             UserManager<ApplicationUser> userManager, UserState userState,
             CredentialsDialog credentialsDialog)
-            : base(nameof(AuthDialog))
+            : base(nameof(AuthenticationDialog))
         {
             this.configuration = configuration;
             this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.userRepository.Include(uq => uq.Include(u => u.User));
             this.userManager = userManager;
             this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
             this.appStore = new ApplicationStore(appContext);
@@ -55,45 +56,35 @@ namespace Phoenix.Bot.Dialogs.Authentication
         private async Task<DialogTurnResult> AskForCredentialsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             await stepContext.Context.SendActivityAsync("Αρχικά, θα χρειαστώ το κινητό τηλέφωνο που δώθηκε κατά την εγγραφή.");
-            return await stepContext.BeginDialogAsync(nameof(CredentialsDialog), new AuthenticationOptions(), cancellationToken);
+            return await stepContext.BeginDialogAsync(nameof(CredentialsDialog), new CredentialsOptions(), cancellationToken);
         }
 
         private async Task<DialogTurnResult> LoginStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var authenticationOptions = stepContext.Result as AuthenticationOptions;
+            if (stepContext.Result is null)
+                return await stepContext.EndDialogAsync(false, cancellationToken);
 
-            if (authenticationOptions.Verified)
+            var credentialsOptions = stepContext.Result as CredentialsOptions;
+
+            if (credentialsOptions.Verified)
             {
-                // TODO: Return the VerifiedUserId through AuthenticationOptions, so that the following call is not needed
-                var verifiedUser = userRepository.Find().
-                    Where(u => u.PhoneNumber == authenticationOptions.Phone).
-                    Where(u => u.UserSchool.Any(us => us.School.FacebookPageId == stepContext.Context.Activity.Recipient.Id)).
-                    Single(u => u.User.IdentifierCode == authenticationOptions.VerifiedCode);
+                var verifiedUser = await userRepository.Find(credentialsOptions.VerifiedUserId.Value);
 
                 verifiedUser.User.TermsAccepted = true;
-                verifiedUser.PhoneNumberConfirmed = authenticationOptions.IsOwnerVerification;
+                verifiedUser.PhoneNumberConfirmed = credentialsOptions.IsOwnerAuthentication;
                 userRepository.Update(verifiedUser);
 
-                var providerName = stepContext.Context.Activity.ChannelId.ToLoginProvider().GetProviderName();
-                var login = new AspNetUserLogins()
-                {
-                    LoginProvider = providerName,
-                    ProviderDisplayName = providerName.ToLower(),
-                    ProviderKey = stepContext.Context.Activity.From.Id,
-                    IsActive = true,
-                    UserId = verifiedUser.Id
-                };
-                userRepository.LinkLogin(login);
+                var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+                var providerKey = stepContext.Context.Activity.From.Id;
+                userRepository.LinkLogin(provider, providerKey, verifiedUser.Id, activate: true);
 
                 // Create password for Teachers to log into the extension
-                if (userRepository.FindRoles(verifiedUser).Any(r => r.Type.IsStaff()))
+                if (userRepository.FindRoles(verifiedUser).Any(r => r.Type.IsStaff() || r.Type.IsBackend()))
                 {
                     var appUser = await appStore.FindByIdAsync(verifiedUser.Id.ToString());
                     if (!await userManager.HasPasswordAsync(appUser))
                     {
-                        char[] invalidPasswordChars = { 'l', 'I', 'O', '0', '1' };
-                        string password = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-                        password = new string(password.Where(c => !invalidPasswordChars.Contains(c)).ToArray()).Substring(0, 8);
+                        string password = DialogsHelper.GeneratePasscode(8);
                         await userManager.AddPasswordAsync(appUser, password);
 
                         var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
@@ -104,7 +95,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                 }
             }
             
-            return await stepContext.EndDialogAsync(authenticationOptions.Verified, cancellationToken);
+            return await stepContext.EndDialogAsync(credentialsOptions.Verified, cancellationToken);
         }
     }
 }

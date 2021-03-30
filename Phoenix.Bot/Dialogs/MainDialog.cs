@@ -12,7 +12,6 @@ using Phoenix.DataHandle.Repositories;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Actions;
-using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.DataHandle.Main;
 using System;
 
@@ -45,6 +44,7 @@ namespace Phoenix.Bot.Dialogs
                 new WaterfallStep[]
                 {
                     IntroStepAsync,
+                    PostIntroStepAsync,
                     ForwardStepAsync,
                     LoopStepAsync
                 }));
@@ -64,8 +64,19 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if (!userRepository.AnyLogin(stepContext.Context.Activity, onlyActive: true))
+            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            var providerKey = stepContext.Context.Activity.From.Id;
+
+            if (!userRepository.HasLogin(provider, providerKey, onlyActive: true))
                 return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
+
+            return await stepContext.NextAsync(true, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> PostIntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            if (((bool)stepContext.Result) is not true)
+                return await this.LoopStepAsync(stepContext, cancellationToken);
 
             return await stepContext.BeginDialogAsync(WaterfallNames.Main.Role, null, cancellationToken);
         }
@@ -73,20 +84,22 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             Role role = (Role)stepContext.Result;
+            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            var providerKey = stepContext.Context.Activity.From.Id;
 
-            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+            var user = userRepository.FindUserFromLogin(provider, providerKey);
             if (user == null)
             {
                 await stepContext.Context.SendActivityAsync("Δυστυχώς υπήρξε ένα πρόβλημα. Παρακαλώ προσπαθήστε ξανά αργότερα " +
                     "ή επικοινωνήστε με το φροντιστήριό σας.");
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await this.LoopStepAsync(stepContext, cancellationToken);
             }
-            //TODO: Reset conversation state and restart Main Dialog if CancelAllDialogsAsync is called anywhere
+            
             if (role == Role.Parent && !userRepository.AnyAffiliatedUsers(user.Id))
             {
                 await stepContext.Context.SendActivityAsync("Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.");
                 await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινωνήστε με το φροντιστήριό σας για την επίλυση του προβλήματος.");
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await this.LoopStepAsync(stepContext, cancellationToken);
             }
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
@@ -112,16 +125,19 @@ namespace Phoenix.Bot.Dialogs
             AspNetUsers user;
             var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
 
+            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            var providerKey = stepContext.Context.Activity.From.Id;
+
             if (mainState.RoleChecked)
             {
                 if (mainState.HasMultipleRoles)
                     return await stepContext.EndDialogAsync(mainState.SelectedRole, cancellationToken);
 
-                user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+                user = userRepository.FindUserFromLogin(provider, providerKey);
                 return await stepContext.EndDialogAsync(userRepository.FindRoles(user).Single().Type, cancellationToken);
             }
 
-            user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+            user = userRepository.FindUserFromLogin(provider, providerKey);
             var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
             Role r;
 
@@ -132,13 +148,13 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(r, cancellationToken);
             }
 
-            bool hasStaffRole = userRoles.Any(r => r.IsStaff());
-            bool invalidMultipleRoles = userRoles.Length > 2 || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !hasStaffRole));
+            bool isStaffOrBackend = userRoles.Any(r => r.IsStaff() || r.IsBackend());
+            bool invalidMultipleRoles = userRoles.Length > 2 || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !isStaffOrBackend));
             if (invalidMultipleRoles)
             {
                 await stepContext.Context.SendActivityAsync("Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.");
                 await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για να διορθωθεί το πρόβλημα");
-                return await stepContext.CancelAllDialogsAsync(cancellationToken);
+                return await this.LoopStepAsync(stepContext, cancellationToken);
             }
 
             mainState.HasMultipleRoles = true;
@@ -151,7 +167,7 @@ namespace Phoenix.Bot.Dialogs
             var userRoles = (Role[])stepContext.Result;
             
             //TODO: Distinguish Role.SuperAdmin's behavior
-            if (userRoles.First().IsBackend())
+            if (userRoles.Any(r => r.IsBackend()))
                 userRoles = new Role[] { Role.Student, Role.Parent, Role.Teacher };
 
             stepContext.Values.Add("translatedRoles", userRoles);

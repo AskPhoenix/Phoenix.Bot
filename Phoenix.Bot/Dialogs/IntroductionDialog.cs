@@ -8,8 +8,10 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State.Options;
+using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +24,7 @@ namespace Phoenix.Bot.Dialogs
         private readonly AspNetUserRepository userRepository;
 
         public IntroductionDialog(PhoenixContext phoenixContext,
-            AuthDialog authDialog, HelpDialog helpDialog)
+            AuthenticationDialog authDialog, HelpDialog helpDialog)
             : base(nameof(IntroductionDialog))
         {
             this.schoolRepository = new SchoolRepository(phoenixContext);
@@ -39,7 +41,8 @@ namespace Phoenix.Bot.Dialogs
                     IntroStepAsync,
                     TermsStepAsync,
                     TermsReplyStepAsync,
-                    WelcomeAskStepAsync
+                    WelcomeAskStepAsync,
+                    EndStepAsync
                 }));
 
             InitialDialogId = WaterfallNames.Introduction.Top;
@@ -76,7 +79,10 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> TermsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var user = userRepository.FindUserFromLogin(stepContext.Context.Activity);
+            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
+            var providerKey = stepContext.Context.Activity.From.Id;
+
+            var user = userRepository.FindUserFromLogin(provider, providerKey);
             if (user != null && user.User.TermsAccepted)
                 await stepContext.NextAsync(null, cancellationToken);
 
@@ -111,20 +117,28 @@ namespace Phoenix.Bot.Dialogs
             {
                 if (foundChoice.Index == 1)
                 {
-                    await stepContext.Context.SendActivityAsync("Λυπάμαι, αλλά θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης " +
-                        "ώστε να χρησιμοποιήσεις τις υπηρεσίες του AskPhoenix.");
+                    await stepContext.Context.SendActivityAsync("Θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης για να ξεκινήσουμε.");
                     return await stepContext.EndDialogAsync(false, cancellationToken);
                 }
                 
                 await stepContext.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             }
 
-            return await stepContext.BeginDialogAsync(nameof(AuthDialog), null, cancellationToken);
+            return await stepContext.BeginDialogAsync(nameof(AuthenticationDialog), null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> WelcomeAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions() { AskForTutorial = true }, cancellationToken);
+            bool authResult = (bool)stepContext.Result;
+            if (authResult)
+                return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions() { AskForTutorial = true }, cancellationToken);
+
+            return await stepContext.EndDialogAsync(false, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> EndStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return await stepContext.EndDialogAsync(true, cancellationToken);
         }
     }
 }

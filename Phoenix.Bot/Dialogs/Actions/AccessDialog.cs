@@ -9,6 +9,7 @@ using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,10 +52,17 @@ namespace Phoenix.Bot.Dialogs.Actions
             });
             card.Body.Add(new AdaptiveRichFactSetLight("Όνομα:", "Κωδικός:"));
 
+            var codes = new List<string>(affiliatedUsers.Count());
+            string code;
             foreach (var affUser in affiliatedUsers)
             {
-                string initials = affUser.User.FirstName.Substring(0, 1) + affUser.User.LastName.Substring(0, 1);
-                string code = DialogsHelper.GenerateVerificationCode(initials, digitsNum: 4);
+                do
+                {
+                    code = DialogsHelper.GeneratePasscode(6);
+                }
+                while (codes.Contains(code));
+                codes.Add(code);
+
                 card.Body.Add(new AdaptiveRichFactSetLight("- " + affUser.User.FullName, code, separator: true));
 
                 affUser.User.IdentifierCode = code;

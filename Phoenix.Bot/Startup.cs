@@ -42,7 +42,7 @@ namespace Phoenix.Bot
             services.AddScoped<IntroductionDialog>();
             services.AddScoped<HomeDialog>();
             
-            services.AddScoped<AuthDialog>();
+            services.AddScoped<AuthenticationDialog>();
             services.AddScoped<CredentialsDialog>();
             services.AddScoped<VerificationDialog>();
 

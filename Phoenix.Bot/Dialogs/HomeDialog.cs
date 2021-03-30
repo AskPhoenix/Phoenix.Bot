@@ -96,6 +96,9 @@ namespace Phoenix.Bot.Dialogs
 
         private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            if (stepContext.Result is null)
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+
             var homeOptions = stepContext.Options as HomeOptions;
             var actionOptions = stepContext.Result as ActionOptions;
 
