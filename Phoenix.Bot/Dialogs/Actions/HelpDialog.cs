@@ -134,7 +134,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> IntroContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
+            if (foundChoice.Value is NavigationPromptOptions.Next)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepContext.Options, cancellationToken);
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
@@ -166,9 +166,9 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> MenuContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
+            if (foundChoice.Value is NavigationPromptOptions.Previous)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Intro, stepContext.Options, cancellationToken);
-            if (foundChoice.Index == 1)
+            if (foundChoice.Value is NavigationPromptOptions.Next)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
@@ -219,9 +219,9 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> ActionsContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
+            if (foundChoice.Value is NavigationPromptOptions.Previous)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepContext.Options, cancellationToken);
-            if (foundChoice.Index == 1)
+            if (foundChoice.Value is NavigationPromptOptions.Next)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepContext.Options, cancellationToken);
             if (foundChoice.Index >= 3 && foundChoice.Index <= 5)
             {
@@ -286,9 +286,9 @@ namespace Phoenix.Bot.Dialogs.Actions
             (stepContext.Options as HelpOptions).DetailedAction = 0;
 
             var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
+            if (foundChoice.Value is NavigationPromptOptions.Previous)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
-            if (foundChoice.Index == 1)
+            if (foundChoice.Value is NavigationPromptOptions.Next)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepContext.Options, cancellationToken);
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
@@ -323,9 +323,9 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> CommandsContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
+            if (foundChoice.Value is NavigationPromptOptions.Previous)
                 return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
-            if (foundChoice.Index == 1)
+            if (foundChoice.Value is NavigationPromptOptions.Next)
                 await stepContext.Context.SendActivityAsync("Ελπίζω η περιήγηση να σου φάνηκε χρήσιμη! 😊");
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
