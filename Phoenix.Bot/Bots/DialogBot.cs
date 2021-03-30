@@ -55,7 +55,14 @@ namespace Phoenix.Bot.Bots
             if (cmd > 0)
             {
                 // Reset the dialog state
-                await conversationState.CreateProperty<DialogState>(nameof(DialogState)).DeleteAsync(turnContext, cancellationToken);
+                try
+                {
+                    await conversationState.CreateProperty<DialogState>(nameof(DialogState)).DeleteAsync(turnContext, cancellationToken);
+                }
+                catch (Exception)
+                {
+                    cmd = Command.Reset;
+                }
 
                 switch (cmd)
                 {
