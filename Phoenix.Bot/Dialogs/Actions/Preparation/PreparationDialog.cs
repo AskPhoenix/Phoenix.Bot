@@ -29,7 +29,8 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             this.courseRepository = new CourseRepository(phoenixContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
-            AddDialog(new DateTimePrompt(nameof(DateTimePrompt), null, "fr-fr")); // Recognizes only: English, Spanish, French, Portuguese, Chinese, German, Italian, and Turkish
+            // Recognizes only: English, Spanish, French, Portuguese, Chinese, German, Italian, and Turkish
+            AddDialog(new DateTimePrompt(nameof(DateTimePrompt), PromptValidators.CustomDateTimePromptValidator, "fr-fr"));
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Preparation.Top,
                 new WaterfallStep[]

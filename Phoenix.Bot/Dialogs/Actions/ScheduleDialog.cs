@@ -62,10 +62,9 @@ namespace Phoenix.Bot.Dialogs.Actions
             return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
         }
 
-
-
         #region Weekly Waterfall Dialog
 
+        //TODO: Use CalendarExtensions.GetWeekOfYearISO8601 like in LectureService of DataHandle
         private async Task<DialogTurnResult> WeeklyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var scheduleOptions = stepContext.Options as ScheduleOptions;

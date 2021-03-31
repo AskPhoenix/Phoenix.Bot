@@ -3,6 +3,7 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.Miscellaneous;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Main;
@@ -36,6 +37,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             if (singleCourse)   // Student --> Search, Grades
             {
+                //TODO: Check if exams only attribulte works properly
                 dates = lectureRepository.FindClosestLectureDates(options.IdToPrepareFor, Tense.Past, 
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }
@@ -69,27 +71,18 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             bool singleCourse = !options.PrepareForUserOrCourse;
 
             var choices = ChoiceFactory.ToChoices(options.Selectables.Values.ToList());
+            //TODO: Χρήση offset για την εύρεση του σήμερα
             var today = DateTimeOffset.UtcNow.Date;
 
-            //TODO: Check if choices are valid
             for (int i = 0; i < choices.Count; i++)
             {
                 var date = CalendarExtensions.ParseDate(choices[i].Value).Date;
                 if (date == today)
-                {
-                    choices[i].Synonyms.Add(choices[i].Value);
                     choices[i].Value = "Σήμερα";
-                }
                 else if (date == today.AddDays(-1.0))
-                {
-                    choices[i].Synonyms.Add(choices[i].Value);
                     choices[i].Value = "Χθες";
-                }
                 else if (date == today.AddDays(1.0))
-                {
-                    choices[i].Synonyms.Add(choices[i].Value);
                     choices[i].Value = "Αύριο";
-                }
             }
 
             //await stepContext.Context.SendActivityAsync("Για ποια μέρα θα ήθελες να δεις τις εργασίες για το σπίτι;");
@@ -107,7 +100,31 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
         protected override async Task<DialogTurnResult> SelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var resolvedDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            DateTimeOffset resolvedDate;
+            var result = stepContext.Result as IList<DateTimeResolution>;
+
+            if (result is null || !result.Any())
+            {
+                string text = stepContext.Context.Activity.Text;
+                text = text.ToUnaccented().ToUpper();
+
+                switch (text)
+                {
+                    case "ΧΘΕΣ":
+                        resolvedDate = DateTimeOffset.UtcNow.AddDays(-1).Date;
+                        break;
+                    case "ΣΗΜΕΡΑ":
+                        resolvedDate = DateTimeOffset.UtcNow.Date;
+                        break;
+                    case "ΑΥΡΙΟ":
+                        resolvedDate = DateTimeOffset.UtcNow.AddDays(1).Date;
+                        break;
+                    default:
+                        return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
+            }
+            else
+                resolvedDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
 
             return await stepContext.EndDialogAsync(resolvedDate, cancellationToken);
         }
