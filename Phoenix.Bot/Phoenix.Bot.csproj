@@ -4,15 +4,13 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ApplicationInsightsResourceId>/subscriptions/158d7265-c8df-4fbd-96df-1d003a650372/resourceGroups/PhoenixRsrcG/providers/microsoft.insights/components/Nuagesa3ypn</ApplicationInsightsResourceId>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
     <UserSecretsId>70734456-ea89-439b-8a3e-ae66329e51e0</UserSecretsId>
     <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
     <Authors>AskPhoenix</Authors>
     <Copyright>AskPhoenix 2021</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
-    <FileVersion>1.0.0</FileVersion>
-    <Version>2.0.0-beta.18</Version>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
