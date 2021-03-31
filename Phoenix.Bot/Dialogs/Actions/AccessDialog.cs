@@ -39,7 +39,9 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> AffiliatedUsersStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as ActionOptions;
-            var affiliatedUsers = userRepository.FindChildren(options.UserId).OrderBy(u => u.User.FullName);
+            var affiliatedUsers = userRepository.FindChildren(options.UserId).
+                AsEnumerable().
+                OrderBy(u => u.User.FullName);
 
             var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
             {
@@ -50,7 +52,7 @@ namespace Phoenix.Bot.Dialogs.Actions
             {
                 Size = AdaptiveTextSize.Medium 
             });
-            card.Body.Add(new AdaptiveRichFactSetLight("Όνομα:", "Κωδικός:"));
+            //card.Body.Add(new AdaptiveRichFactSetLight("Όνομα  ", "  Κωδικός"));
 
             var codes = new List<string>(affiliatedUsers.Count());
             string code;
@@ -63,7 +65,7 @@ namespace Phoenix.Bot.Dialogs.Actions
                 while (codes.Contains(code));
                 codes.Add(code);
 
-                card.Body.Add(new AdaptiveRichFactSetLight("- " + affUser.User.FullName, code, separator: true));
+                card.Body.Add(new AdaptiveRichFactSetLight(affUser.User.FullName, $"{code, 10}"));
 
                 affUser.User.IdentifierCode = code;
                 affUser.User.IdentifierCodeCreatedAt = DateTimeOffset.UtcNow;
