@@ -10,11 +10,12 @@ using Microsoft.Extensions.Hosting;
 using Phoenix.Bot.Adapters;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
-using Phoenix.Bot.Dialogs.Student;
-using Phoenix.Bot.Dialogs.Teacher;
+using Phoenix.Bot.Dialogs.Authentication;
+using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using System.Globalization;
+using Phoenix.Bot.Dialogs.Actions.Preparation;
 
 namespace Phoenix.Bot
 {
@@ -38,16 +39,28 @@ namespace Phoenix.Bot
             services.AddSingleton<ConversationState>();
 
             services.AddScoped<MainDialog>();
-            services.AddScoped<AuthDialog>();
-            services.AddScoped<WelcomeDialog>();
-            services.AddScoped<FeedbackDialog>();
+            services.AddScoped<IntroductionDialog>();
+            services.AddScoped<HomeDialog>();
+            
+            services.AddScoped<AuthenticationDialog>();
+            services.AddScoped<CredentialsDialog>();
+            services.AddScoped<VerificationDialog>();
 
-            services.AddScoped<StudentDialog>();
-            services.AddScoped<ExerciseDialog>();
-            services.AddScoped<ExamDialog>();
+            services.AddScoped<PreparationDialog>();
+            services.AddScoped<AffiliatedUserPreparationComponent>();
+            services.AddScoped<CoursePreparationComponent>();
+            services.AddScoped<GroupPreparationComponent>();
+            services.AddScoped<DatePreparationComponent>();
+            services.AddScoped<LecturePreparationComponent>();
+
+            services.AddScoped<AssignmentsDialog>();
             services.AddScoped<ScheduleDialog>();
+            services.AddScoped<GradesDialog>();
+            services.AddScoped<AccessDialog>();
+            services.AddScoped<AssignmentsManagementDialog>();
 
-            services.AddScoped<TeacherDialog>();
+            services.AddScoped<HelpDialog>();
+            services.AddScoped<FeedbackDialog>();
 
             services.AddTransient<IBot, DialogBot<MainDialog>>();
 
@@ -67,6 +80,7 @@ namespace Phoenix.Bot
 
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
             services.AddDbContext<PhoenixContext>(options => options.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
+            services.AddDbContext<BotDataContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
         }
 
         public static void Configure(IApplicationBuilder app, IHostEnvironment env)

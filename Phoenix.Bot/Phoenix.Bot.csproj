@@ -4,26 +4,25 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ApplicationInsightsResourceId>/subscriptions/158d7265-c8df-4fbd-96df-1d003a650372/resourceGroups/PhoenixRsrcG/providers/microsoft.insights/components/Nuagesa3ypn</ApplicationInsightsResourceId>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
     <UserSecretsId>70734456-ea89-439b-8a3e-ae66329e51e0</UserSecretsId>
     <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
     <Authors>AskPhoenix</Authors>
-    <Copyright>AskPhoenix 2020</Copyright>
+    <Copyright>AskPhoenix 2021</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
-    <FileVersion>1.0.0</FileVersion>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AdaptiveCards" Version="2.4.0" />
     <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.9.9" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.16.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.17.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.11.1" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.11.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.11" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="1.0.11" />
-    <PackageReference Include="Phoenix.DataHandle" Version="1.8.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.13" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="2.0.0-beta.67" />
+    <PackageReference Include="Phoenix.DataHandle" Version="2.0.0-beta.91" />
   </ItemGroup>
 
     <ItemGroup>

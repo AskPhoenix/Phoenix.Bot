@@ -2,24 +2,43 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Linguistic;
-using Phoenix.Bot.Utilities.Channels.Facebook;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Phoenix.Bot.Utilities.Dialogs;
+using Microsoft.Extensions.Configuration;
+using Phoenix.Bot.Utilities.State;
+using Phoenix.DataHandle.Repositories;
+using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Main;
+using Bot.Builder.Community.Storage.EntityFramework;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Phoenix.Bot.Bots
 {
     public class DialogBot<T> : ActivityHandler where T : Dialog
     {
-        protected readonly Dialog Dialog;
-        protected readonly BotState ConversationState;
-        protected readonly BotState UserState;
+        private readonly IConfiguration configuration;
+        private readonly BotState conversationState;
+        private readonly BotState userState;
+        private readonly AspNetUserRepository userRepository;
+        private readonly BotDataContext botDataContext;
 
-        public DialogBot(ConversationState conversationState, UserState userState, T dialog)
+        protected readonly Dialog Dialog;
+
+        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, 
+            PhoenixContext phoenixContext, BotDataContext botDataContext,
+            T dialog)
         {
-            ConversationState = conversationState;
-            UserState = userState;
-            Dialog = dialog;
+            this.configuration = configuration;
+            this.conversationState = conversationState;
+            this.userState = userState;
+
+            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.botDataContext = botDataContext;
+
+            this.Dialog = dialog;
         }
 
         public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
@@ -31,8 +50,8 @@ namespace Phoenix.Bot.Bots
             try
             {
                 // Save any state changes that might have occured during the turn.
-                await ConversationState.SaveChangesAsync(turnContext, false, cancellationToken);
-                await UserState.SaveChangesAsync(turnContext, false, cancellationToken);
+                await conversationState.SaveChangesAsync(turnContext, false, cancellationToken);
+                await userState.SaveChangesAsync(turnContext, false, cancellationToken);
             }
             catch (Exception) { }
         }
@@ -40,16 +59,63 @@ namespace Phoenix.Bot.Bots
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
             string mess = turnContext.Activity.Text;
-            
-            bool resetConversation = Persistent.IsCommand(mess) 
-                || mess.ContainsSynonyms(Synonyms.Topics.Greetings)
-                || (mess.ContainsSynonyms(Synonyms.Topics.Help) 
-                    && await UserState.CreateProperty<bool>("IsAuthenticated").GetAsync(turnContext, cancellationToken: cancellationToken));
+            var cmd = Command.NoCommand;
 
-            if (resetConversation)
-                await ConversationState.ClearStateAsync(turnContext, cancellationToken);
+            if (CommandHandle.IsCommand(mess))
+                CommandHandle.TryGetCommand(mess, out cmd);
+            else
+                CommandHandle.TryInferCommand(mess, out cmd);
 
-            await Dialog.RunAsync(turnContext, ConversationState.CreateProperty<DialogState>(nameof(DialogState)), cancellationToken);
+            if (cmd > 0)
+            {
+                // Reset the dialog state
+                try
+                {
+                    await conversationState.CreateProperty<DialogState>(nameof(DialogState)).DeleteAsync(turnContext, cancellationToken);
+                }
+                catch (Exception)
+                {
+                    cmd = Command.Reset;
+                }
+
+                switch (cmd)
+                {
+                    case Command.GetStarted:
+                    case Command.Greeting:
+                        await turnContext.SendActivityAsync(MessageFactory.ContentUrl(
+                            url: await DialogsHelper.CreateGifUrlAsync("g", "hi", 10, new Random().Next(10), configuration["GiphyKey"]),
+                            contentType: "image/gif",
+                            text: "Γεια σου!! 😊"));
+                        break;
+                    case Command.Reset:
+                        await conversationState.DeleteAsync(turnContext, cancellationToken);
+                        break;
+                    case Command.Logout:
+                        var user = userRepository.FindUserFromLogin(turnContext.Activity.ChannelId.ToLoginProvider(), turnContext.Activity.From.Id);
+                        var deactivatedLogins = userRepository.Logout(user.Id, logoutAffiliatedUsers: true);
+
+                        // Delete conversation data of user and all their affiliated users
+                        List<BotDataEntity> botDataToRemove = new();
+                        var botConversationData = botDataContext.BotDataEntity.
+                            Where(bd => bd.RealId.Contains("conversations"));
+
+                        foreach (var login in deactivatedLogins)
+                            botDataToRemove.AddRange(botConversationData.
+                                Where(bd => bd.RealId.Contains(login.ProviderDisplayName) && bd.RealId.Contains(login.ProviderKey)));
+
+                        botDataContext.RemoveRange(botDataToRemove);
+                        botDataContext.SaveChanges();
+
+                        break;
+                }
+            }
+
+            var conversationDataAccessor = conversationState.CreateProperty<ConversationData>(nameof(ConversationData));
+            var conversationData = await conversationDataAccessor.GetAsync(turnContext, null, cancellationToken);
+            conversationData.Command = cmd;
+            await conversationDataAccessor.SetAsync(turnContext, conversationData, cancellationToken);
+
+            await Dialog.RunAsync(turnContext, conversationState.CreateProperty<DialogState>(nameof(DialogState)), cancellationToken);
         }
     }
 }
