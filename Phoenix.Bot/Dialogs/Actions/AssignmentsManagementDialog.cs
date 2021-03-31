@@ -59,26 +59,16 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> PasswordCheckStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (userData.RevealExtensionPassword)
+            if (userData.RevealExtensionPassword && !string.IsNullOrEmpty(userData.TempExtensionPassword))
             {
+                await stepContext.Context.SendActivityAsync("Ο παρακάτω κωδικός είναι προσωπικός και δεν πρέπει να γνωστοποιείται σε άλλους:");
+
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
                 {
                     BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
                 };
-                card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικός χρήστη extension:"));
-                card.Body.Add(new AdaptiveTextBlockHeaderLight(userData.TempExtensionPassword) { Size = AdaptiveTextSize.Large });
-                card.Body.Add(new AdaptiveTextBlock("- Ο παραπάνω κωδικός είναι προσωπικός και δεν πρέπει να γνωστοποιείται σε άλλους.")
-                {
-                    Color = AdaptiveTextColor.Light,
-                    Size = AdaptiveTextSize.Large,
-                    Separator = true
-                });
-                card.Body.Add(new AdaptiveTextBlockHeaderLight("- Κατά την πρώτη σας σύνδεση στο site του extension συστήνεται η αλλαγή του κωδικού " +
-                    "με κάποιον που θα θυμάστε εύκολα και θα γνωρίζετε μόνο εσείς.")
-                {
-                    Color = AdaptiveTextColor.Light,
-                    Size = AdaptiveTextSize.Large
-                });
+                card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικός χρήστη extension"));
+                card.Body.Add(new AdaptiveTextBlockHeaderLight(userData.TempExtensionPassword) { Separator = true });
 
                 Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
                 await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
