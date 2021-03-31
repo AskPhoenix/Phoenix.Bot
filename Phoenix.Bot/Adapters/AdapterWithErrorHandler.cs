@@ -1,34 +1,39 @@
 ﻿using Bot.Builder.Community.Storage.EntityFramework;
+using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Builder.TraceExtensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Phoenix.DataHandle.Main;
 
 namespace Phoenix.Bot.Adapters
 {
     public class AdapterWithErrorHandler : BotFrameworkHttpAdapter
     {
-        public AdapterWithErrorHandler(
-            IConfiguration configuration,
-            ILogger<BotFrameworkHttpAdapter> logger,
-            EntityFrameworkTranscriptStore transcriptStore)
+        public AdapterWithErrorHandler(ConversationState conversationState, IConfiguration configuration,
+            ILogger<BotFrameworkHttpAdapter> logger, EntityFrameworkTranscriptStore transcriptStore)
             : base(configuration, logger)
         {
             OnTurnError = async (turnContext, exception) =>
             {
-                if (turnContext.Activity.ChannelId != "emulator")
+                // Store the Activity and the Exception Message in BotTranscript Table
+                if (turnContext.Activity.ChannelId.ToLoginProvider() != LoginProvider.Emulator)
                 {
-                    var act = turnContext.Activity;
-                    act.Value = exception.Message;
-                    await transcriptStore.LogActivityAsync(act);
+                    var activity = turnContext.Activity;
+                    activity.Value = exception.Message;
+                    await transcriptStore.LogActivityAsync(activity);
                 }
+
+                // Delete the Conversation State
+                await conversationState.DeleteAsync(turnContext);
+                await conversationState.SaveChangesAsync(turnContext);
 
                 // Log any leaked exception from the application.
                 logger.LogError(exception, $"[OnTurnError] unhandled error : {exception.Message}");
 
                 // Send a message to the user
-                await turnContext.SendActivityAsync("Λυπάμαι, υπήρξε ένα πρόβλημα :(");
-
+                await turnContext.SendActivityAsync(MessageFactory.SuggestedActions(new string[1] { "🏠 Αρχική" }, "Λυπάμαι, υπήρξε ένα πρόβλημα :("));
+                
                 // Send a trace activity, which will be displayed in the Bot Framework Emulator
                 await turnContext.TraceActivityAsync("OnTurnError Trace", exception.Message, "https://www.botframework.com/schemas/error", "TurnError");
             };

@@ -7,7 +7,7 @@ read token
 ### Get Started
 
 curl -X POST -H "Content-Type: application/json" -d '{
-  "get_started": {"payload": "--persistent-get-started--"}
+  "get_started": {"payload": "--get-started--"}
 }' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
 
 echo ''
@@ -68,7 +68,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
   "greeting": [
     {
       "locale":"default",
-      "text":"Καλωσορίσατε στον ψηφιακό βοηθό του AskPhoenix!"
+      "text":"Καλωσορίσατε στον ψηφιακό βοηθό μας!"
     }
   ]
 }' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
