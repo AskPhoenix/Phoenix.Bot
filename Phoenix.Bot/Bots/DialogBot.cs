@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using Phoenix.Bot.Utilities.Dialogs;
 using Microsoft.Extensions.Configuration;
 using Phoenix.Bot.Utilities.State;
+using Phoenix.DataHandle.Repositories;
+using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Main;
 
 namespace Phoenix.Bot.Bots
 {
@@ -16,14 +19,16 @@ namespace Phoenix.Bot.Bots
         private readonly IConfiguration configuration;
         private readonly BotState conversationState;
         private readonly BotState userState;
+        private readonly AspNetUserRepository userRepository;
 
         protected readonly Dialog Dialog;
 
-        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, T dialog)
+        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, PhoenixContext phoenixContext, T dialog)
         {
             this.configuration = configuration;
             this.conversationState = conversationState;
             this.userState = userState;
+            this.userRepository = new AspNetUserRepository(phoenixContext);
             this.Dialog = dialog;
         }
 
@@ -76,6 +81,10 @@ namespace Phoenix.Bot.Bots
                     case Command.Reset:
                         await conversationState.DeleteAsync(turnContext, cancellationToken);
                         break;
+                    case Command.Logout:
+                        var user = userRepository.FindUserFromLogin(turnContext.Activity.ChannelId.ToLoginProvider(), turnContext.Activity.From.Id);
+                        userRepository.Logout(user.Id, logoutAffiliatedUsers: true);
+                        goto case Command.Reset;
                 }
             }
 

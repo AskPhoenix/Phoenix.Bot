@@ -84,11 +84,11 @@ namespace Phoenix.Bot.Dialogs
 
             var user = userRepository.FindUserFromLogin(provider, providerKey);
             if (user != null && user.User.TermsAccepted)
-                await stepContext.NextAsync(null, cancellationToken);
+                return await stepContext.NextAsync(null, cancellationToken);
 
             var card = new HeroCard
             {
-                Title = "Όροι Παροχής Υπηρεσίας",
+                Title = "Όροι Παροχής Υπηρεσιών",
                 Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης.",
                 Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html"),
                 Buttons = new List<CardAction>
