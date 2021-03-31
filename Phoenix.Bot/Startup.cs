@@ -80,6 +80,7 @@ namespace Phoenix.Bot
 
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
             services.AddDbContext<PhoenixContext>(options => options.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
+            services.AddDbContext<BotDataContext>(options => options.UseSqlServer(Configuration.GetConnectionString("PhoenixConnection")));
         }
 
         public static void Configure(IApplicationBuilder app, IHostEnvironment env)

@@ -97,7 +97,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                 {
                     await stepContext.Context.SendActivityAsync("Υπενθυμίζεται πως η πρώτη σύνδεση πρέπει να γίνει από τον ιδιοκτήτη του αριθμού.");
                     return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt), 
-                        new YesNoPromptOptions("Ο αριθμός ανήκει σε εμένα και επιθυμώ να συνεχίσω:"), cancellationToken);
+                        new YesNoPromptOptions("Ο αριθμός ανήκει σε εμένα και επιθυμώ να συνεχίσω:", simpleNo: true), cancellationToken);
                 }
 
                 credentialsOptions.IsOwnerAuthentication = true;
@@ -117,7 +117,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
             {
                 string code = affUser.User.IdentifierCode;
                 var codeCreatedAt = affUser.User.IdentifierCodeCreatedAt;
-                if (!string.IsNullOrEmpty(code) && codeCreatedAt.HasValue && CredentialsOptions.IsCodeExpired(codeCreatedAt.Value))
+                if (!string.IsNullOrEmpty(code) && codeCreatedAt.HasValue && !CredentialsOptions.IsCodeExpired(codeCreatedAt.Value))
                 {
                     credentialsOptions.Codes.Add(code, affUser.Id);
                     credentialsOptions.CodesCreatedAt.Add(code, affUser.User.IdentifierCodeCreatedAt.Value);
@@ -161,7 +161,16 @@ namespace Phoenix.Bot.Dialogs.Authentication
         {
             var credentialsOptions = stepContext.Options as CredentialsOptions;
             if (stepContext.Result is int verifiedUserId)
+            {
                 credentialsOptions.VerifiedUserId = verifiedUserId;
+                
+                // Remove user's code if any (single use only)
+                var user = await userRepository.Find(verifiedUserId);
+                user.User.IdentifierCode = null;
+                user.User.IdentifierCodeCreatedAt = null;
+
+                userRepository.Update(user);
+            }
 
             return await stepContext.EndDialogAsync(credentialsOptions, cancellationToken);
         }

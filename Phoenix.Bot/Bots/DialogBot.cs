@@ -11,6 +11,9 @@ using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Repositories;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Main;
+using Bot.Builder.Community.Storage.EntityFramework;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Phoenix.Bot.Bots
 {
@@ -20,15 +23,21 @@ namespace Phoenix.Bot.Bots
         private readonly BotState conversationState;
         private readonly BotState userState;
         private readonly AspNetUserRepository userRepository;
+        private readonly BotDataContext botDataContext;
 
         protected readonly Dialog Dialog;
 
-        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, PhoenixContext phoenixContext, T dialog)
+        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, 
+            PhoenixContext phoenixContext, BotDataContext botDataContext,
+            T dialog)
         {
             this.configuration = configuration;
             this.conversationState = conversationState;
             this.userState = userState;
+
             this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.botDataContext = botDataContext;
+
             this.Dialog = dialog;
         }
 
@@ -83,8 +92,21 @@ namespace Phoenix.Bot.Bots
                         break;
                     case Command.Logout:
                         var user = userRepository.FindUserFromLogin(turnContext.Activity.ChannelId.ToLoginProvider(), turnContext.Activity.From.Id);
-                        userRepository.Logout(user.Id, logoutAffiliatedUsers: true);
-                        goto case Command.Reset;
+                        var deactivatedLogins = userRepository.Logout(user.Id, logoutAffiliatedUsers: true);
+
+                        // Delete conversation data of user and all their affiliated users
+                        List<BotDataEntity> botDataToRemove = new();
+                        var botConversationData = botDataContext.BotDataEntity.
+                            Where(bd => bd.RealId.Contains("conversations"));
+
+                        foreach (var login in deactivatedLogins)
+                            botDataToRemove.AddRange(botConversationData.
+                                Where(bd => bd.RealId.Contains(login.ProviderDisplayName) && bd.RealId.Contains(login.ProviderKey)));
+
+                        botDataContext.RemoveRange(botDataToRemove);
+                        botDataContext.SaveChanges();
+
+                        break;
                 }
             }
 

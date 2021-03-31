@@ -96,7 +96,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
             }
             
             return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
-                new YesNoPromptOptions("Τέλεια! Μόλις σου έστειλα ένα SMS με ένα μοναδικό pin. Το έλαβες;"));
+                new YesNoPromptOptions("Τέλεια! Μόλις σου έστειλα ένα SMS με ένα μοναδικό pin. Το έλαβες;", simpleNo: true), cancellationToken);
         }
 
         private async Task<DialogTurnResult> ReceiveCodeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -114,7 +114,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                     Prompt = MessageFactory.Text("ΟΚ, μην ανησυχείς! Επειδή καμιά φορά αργεί, περίμενε μερικά λεπτά ακόμα."),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω απαντήσεις για να συνεχίσουμε:"),
                     Choices = new Choice[] { new Choice("👌 Το έλαβα"), new Choice("🔁 Στείλε ξανά") }
-                });
+                }, cancellationToken);
         }
 
         private async Task<DialogTurnResult> CodeDelayedStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -184,7 +184,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
 
             await stepContext.Context.SendActivityAsync("Ο κωδικός που έγραψες δεν είναι έγκυρος.");
             return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt),
-                new YesNoPromptOptions("Θα ήθελες να προσπαθήσεις ξανά;"));
+                new YesNoPromptOptions("Θα ήθελες να προσπαθήσεις ξανά;", simpleNo: true), cancellationToken);
         }
 
         private async Task<DialogTurnResult> RecheckCodeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
