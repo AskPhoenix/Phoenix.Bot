@@ -93,15 +93,16 @@ namespace Phoenix.Bot.Dialogs.Authentication
             //Verification of the owner
             if (ownerLogins is null || !ownerLogins.Any() || ownerLogins.All(l => !l.IsActive) || providerKeyBelongsToOwner)
             {
+                credentialsOptions.IsOwnerAuthentication = true;
+                credentialsOptions.VerifiedUserId = phoneOwner.Id;
+
                 if (userRepository.AnyAffiliatedUsers(phoneOwner.Id) && !providerKeyBelongsToOwner)
                 {
                     await stepContext.Context.SendActivityAsync("Υπενθυμίζεται πως η πρώτη σύνδεση πρέπει να γίνει από τον ιδιοκτήτη του αριθμού.");
                     return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt), 
                         new YesNoPromptOptions("Ο αριθμός ανήκει σε εμένα και επιθυμώ να συνεχίσω:", simpleNo: true), cancellationToken);
                 }
-
-                credentialsOptions.IsOwnerAuthentication = true;
-                credentialsOptions.VerifiedUserId = phoneOwner.Id;
+                
                 return await stepContext.BeginDialogAsync(nameof(VerificationDialog), new VerificationOptions(credentialsOptions), cancellationToken);
             }
 
@@ -146,13 +147,14 @@ namespace Phoenix.Bot.Dialogs.Authentication
             if (foundChoice.Index == 0)
             {
                 await stepContext.Context.SendActivityAsync("Εντάξει, ας συνεχίσουμε!");
-
-                credentialsOptions.IsOwnerAuthentication = true;
-                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), credentialsOptions, cancellationToken);
+                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), new VerificationOptions(credentialsOptions), cancellationToken);
             }
             
             await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του ιδιοκτήτη του αριθμού, ώστε να ενεργοποιηθούν" +
                 " οι συνδέσεις των υπόλοιπων μελών.");
+
+            credentialsOptions.IsOwnerAuthentication = false;
+            credentialsOptions.VerifiedUserId = null;
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
