@@ -238,7 +238,13 @@ namespace Phoenix.Bot.Dialogs.Actions
 
         private async Task<DialogTurnResult> ActionDetailsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var topic = (BotAction)(stepContext.Options as HelpOptions).DetailedAction;
+            //var topic = (BotAction)(stepContext.Options as HelpOptions).DetailedAction;
+            var topic = (stepContext.Options as HelpOptions).DetailedAction switch
+            {
+                1 => BotAction.Exercises,
+                2 => BotAction.Exams,
+                _ => BotAction.ScheduleWeekly
+            };
             var topicName = topic == BotAction.Exercises ? "τις ασκήσεις" : topic == BotAction.Exams ? "τα διαγωνίσματα" : "το πρόγραμμα";
             
             await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις περισσότερες πληροφορίες για " + topicName + ":");
