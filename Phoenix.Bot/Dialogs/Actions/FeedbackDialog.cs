@@ -147,14 +147,14 @@ namespace Phoenix.Bot.Dialogs.Actions
                 {
                     Prompt = MessageFactory.Text("Πώς με βαθμολογείς;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ένα από τα παρακάτω εικονίδια:"),
-                    Choices = ChoiceFactory.ToChoices(new string[] { "😍", "😄", "🙂", "😐", "😒" })
+                    Choices = ChoiceFactory.ToChoices(new string[] { "😒", "😐", "🙂", "😄", "😍" })
                 },
                 cancellationToken);
         }
 
         private async Task<DialogTurnResult> RatingReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            byte rating = (byte)(5 - (stepContext.Result as FoundChoice).Index);
+            byte rating = (byte)((stepContext.Result as FoundChoice).Index + 1);
 
             await stepContext.Context.SendActivityAsync("Σ' ευχαριστώ πολύ για τη βαθμολογία σου! 😊");
             return await stepContext.EndDialogAsync(rating, cancellationToken);
