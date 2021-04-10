@@ -84,7 +84,11 @@ namespace Phoenix.Bot.Dialogs.Authentication
                     var appUser = await appStore.FindByIdAsync(verifiedUser.Id.ToString());
                     if (!await userManager.HasPasswordAsync(appUser))
                     {
-                        string password = DialogsHelper.GeneratePasscode(8);
+                        string password;
+                        if (verifiedUser.PhoneNumber.StartsWith("690000000"))
+                            password = configuration["TestExtensionPass"];
+                        else
+                            password = DialogsHelper.GeneratePasscode(8);
                         await userManager.AddPasswordAsync(appUser, password);
 
                         var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
