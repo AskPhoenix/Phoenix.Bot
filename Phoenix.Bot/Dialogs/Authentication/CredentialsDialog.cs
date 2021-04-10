@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Phoenix.DataHandle.Main.Models;
 using System.Linq;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.Dialogs;
@@ -12,21 +11,18 @@ using Phoenix.DataHandle.Repositories;
 using Microsoft.Bot.Schema;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.DataHandle.Main;
-using System;
 using Phoenix.Bot.Utilities.State.Options.Authentification;
 
 namespace Phoenix.Bot.Dialogs.Authentication
 {
     public class CredentialsDialog : ComponentDialog
     {
-        private readonly IConfiguration configuration;
         private readonly AspNetUserRepository userRepository;
 
-        public CredentialsDialog(IConfiguration configuration, PhoenixContext phoenixContext,
+        public CredentialsDialog(PhoenixContext phoenixContext,
             VerificationDialog verificationDialog)
             : base(nameof(CredentialsDialog))
         {
-            this.configuration = configuration;
             this.userRepository = new AspNetUserRepository(phoenixContext);
             this.userRepository.Include(uq => uq.
                 Include(u => u.User).
@@ -73,10 +69,13 @@ namespace Phoenix.Bot.Dialogs.Authentication
             credentialsOptions.Phone = phone;
 
             var phoneOwner = await userRepository.Find(checkUnique: u => u.PhoneNumber == phone && u.User.IsSelfDetermined);
-            //TODO: Move to Repository
-            bool isAssignedToCurrentSchool = phoneOwner.UserSchool?.Any(us => us.School.FacebookPageId == activity.Recipient.Id) ?? false;
 
-            if (phoneOwner is null || !isAssignedToCurrentSchool)
+            //TODO: Move to Repository
+            // Super users are assigned to a school
+            bool isAssignedToCurrentSchool = phoneOwner is not null && 
+                (phoneOwner.UserSchool?.Any(us => us.School.FacebookPageId == activity.Recipient.Id) ?? false);
+
+            if (!isAssignedToCurrentSchool)
             {
                 await stepContext.Context.SendActivityAsync("Το κινητό τηλέφωνο δε βρέθηκε. Ας προσπαθήσουμε ξανά, πιο προσεκτικά!");
                 return await stepContext.ReplaceDialogAsync(InitialDialogId, new CredentialsOptions(), cancellationToken);
