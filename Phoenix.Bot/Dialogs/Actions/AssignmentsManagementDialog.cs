@@ -8,11 +8,11 @@ using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Channels.Facebook;
-using Phoenix.Bot.Utilities.Channels.Facebook.FacebookEvents;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State;
@@ -21,20 +21,23 @@ using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
+using Phoenix.DataHandle.Sms;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
     public class AssignmentsManagementDialog : ComponentDialog
     {
+        private readonly IConfiguration configuration;
         private readonly AspNetUserRepository userRepository;
         private readonly IStatePropertyAccessor<UserData> userDataAccesor;
         private readonly UserManager<ApplicationUser> userManager;
         private readonly ApplicationStore appStore;
 
-        public AssignmentsManagementDialog(PhoenixContext phoenixContext, ApplicationDbContext appContext,
+        public AssignmentsManagementDialog(IConfiguration configuration, PhoenixContext phoenixContext, ApplicationDbContext appContext,
             UserState userState, UserManager<ApplicationUser> userManager)
             : base(nameof(AssignmentsManagementDialog))
         {
+            this.configuration = configuration;
             this.userRepository = new AspNetUserRepository(phoenixContext);
             this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
             this.userManager = userManager;
@@ -61,17 +64,30 @@ namespace Phoenix.Bot.Dialogs.Actions
             var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
             if (userData.RevealExtensionPassword && !string.IsNullOrEmpty(userData.TempExtensionPassword))
             {
-                await stepContext.Context.SendActivityAsync("Ο παρακάτω κωδικός είναι προσωπικός και δεν πρέπει να γνωστοποιείται σε άλλους:");
+                var options = stepContext.Options as AssignmentsManagementOptions;
+                var user = await userRepository.Find(options.UserId);
 
-                var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
+                if (user.PhoneNumber.StartsWith("690000000"))
                 {
-                    BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-                };
-                card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικός χρήστη extension"));
-                card.Body.Add(new AdaptiveTextBlockHeaderLight(userData.TempExtensionPassword) { Separator = true });
+                    await stepContext.Context.SendActivityAsync("Ο παρακάτω κωδικός είναι προσωπικός και δεν πρέπει να γνωστοποιείται σε άλλους:");
+                    var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
+                    {
+                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
+                    };
+                    card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικός εργαλειοθήκης καθηγητών"));
+                    card.Body.Add(new AdaptiveTextBlockHeaderLight(userData.TempExtensionPassword) { Separator = true });
 
-                Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
+                    Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
+                }
+                else
+                {
+                    await stepContext.Context.SendActivityAsync("Σύντομα θα λάβεις με SMS τον προσωπικό κωδικό σου για την εργαλειοθήκη καθηγητών.");
+                    await stepContext.Context.SendActivityAsync("Σημειώνεται πως δεν πρέπει να γνωστοποιείται σε άλλους, " +
+                        "ενώ συνιστάται η δημιουργία ενός νέου μετά την πρώτη σύνδεση.");
+                    var sms = new SmsService(configuration["NexmoSMS:ApiKey"], configuration["NexmoSMS:ApiSecret"]);
+                    await sms.SendAsync(user.PhoneNumber, $"Ο κωδικός σου για την εργαλειοθήκη καθηγητών είναι ο {userData.TempExtensionPassword}.");
+                }
 
                 userData.RevealExtensionPassword = false;
                 await userDataAccesor.SetAsync(stepContext.Context, userData, cancellationToken);
@@ -142,7 +158,7 @@ namespace Phoenix.Bot.Dialogs.Actions
                 var appUser = await appStore.FindByIdAsync(options.UserId.ToString());
                 if (await userManager.CheckPasswordAsync(appUser, userData.TempExtensionPassword))
                 {
-                    string msg = "Υπενθυμίζεται πως καλό θα ήταν να αλλάξετε τον κωδικό πρόσβασής σας στο site του extension.";
+                    string msg = "Υπενθυμίζεται πως καλό θα ήταν να αλλάξετε τον κωδικό πρόσβασής σας στην εργαλειοθήκη καθηγητών.";
                     return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt), new ConfirmPromptOptions(msg), cancellationToken);
                 }
                 else
