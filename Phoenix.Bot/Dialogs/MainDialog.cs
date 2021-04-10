@@ -99,7 +99,7 @@ namespace Phoenix.Bot.Dialogs
             {
                 await stepContext.Context.SendActivityAsync("Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.");
                 await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινωνήστε με το φροντιστήριό σας για την επίλυση του προβλήματος.");
-                return await this.LoopStepAsync(stepContext, cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
@@ -129,13 +129,7 @@ namespace Phoenix.Bot.Dialogs
             var providerKey = stepContext.Context.Activity.From.Id;
 
             if (mainState.RoleChecked)
-            {
-                if (mainState.HasMultipleRoles)
-                    return await stepContext.EndDialogAsync(mainState.SelectedRole, cancellationToken);
-
-                user = userRepository.FindUserFromLogin(provider, providerKey);
-                return await stepContext.EndDialogAsync(userRepository.FindRoles(user).Single().Type, cancellationToken);
-            }
+                return await stepContext.EndDialogAsync(mainState.SelectedRole, cancellationToken);
 
             user = userRepository.FindUserFromLogin(provider, providerKey);
             var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
@@ -143,7 +137,12 @@ namespace Phoenix.Bot.Dialogs
 
             if (userRoles.Length == 1 && !(r = userRoles.Single()).IsBackend())
             {
-                mainState.RoleChecked = true;
+                mainState = new MainState
+                {
+                    RoleChecked = true,
+                    HasMultipleRoles = false,
+                    SelectedRole = r
+                };
                 await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
                 return await stepContext.EndDialogAsync(r, cancellationToken);
             }
@@ -157,8 +156,6 @@ namespace Phoenix.Bot.Dialogs
                 return await this.LoopStepAsync(stepContext, cancellationToken);
             }
 
-            mainState.HasMultipleRoles = true;
-            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
             return await stepContext.NextAsync(userRoles, cancellationToken);
         }
 
@@ -187,9 +184,12 @@ namespace Phoenix.Bot.Dialogs
             var foundChoice = stepContext.Result as FoundChoice;
             Role selRole = ((Role[])stepContext.Values["translatedRoles"]).ElementAt(foundChoice.Index);
 
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            mainState.SelectedRole = selRole;
-            mainState.RoleChecked = true;
+            var mainState = new MainState
+            {
+                RoleChecked = true,
+                HasMultipleRoles = true,
+                SelectedRole = selRole
+            };
             await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
 
             return await stepContext.EndDialogAsync(selRole, cancellationToken);

@@ -66,12 +66,16 @@ namespace Phoenix.Bot.Bots
             else
                 CommandHandle.TryInferCommand(mess, out cmd);
 
+            var conversationDataAccessor = conversationState.CreateProperty<ConversationData>(nameof(ConversationData));
+            var mainStateAccessor = conversationState.CreateProperty<DialogState>(nameof(DialogState));
+
             if (cmd > 0)
             {
                 // Reset the dialog state
                 try
                 {
-                    await conversationState.CreateProperty<DialogState>(nameof(DialogState)).DeleteAsync(turnContext, cancellationToken);
+                    await mainStateAccessor.DeleteAsync(turnContext, cancellationToken);
+                    await conversationDataAccessor.DeleteAsync(turnContext, cancellationToken);
                 }
                 catch (Exception)
                 {
@@ -106,11 +110,14 @@ namespace Phoenix.Bot.Bots
                         botDataContext.RemoveRange(botDataToRemove);
                         botDataContext.SaveChanges();
 
+                        await conversationState.ClearStateAsync(turnContext, cancellationToken);
+                        await userState.ClearStateAsync(turnContext, cancellationToken);
+
                         break;
                 }
             }
 
-            var conversationDataAccessor = conversationState.CreateProperty<ConversationData>(nameof(ConversationData));
+            
             var conversationData = await conversationDataAccessor.GetAsync(turnContext, null, cancellationToken);
             conversationData.Command = cmd;
             await conversationDataAccessor.SetAsync(turnContext, conversationData, cancellationToken);
