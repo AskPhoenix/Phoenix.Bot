@@ -105,6 +105,8 @@ namespace Phoenix.Bot.Dialogs.Actions
                 }
             }
 
+            await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις το πρόγραμμα της τρέχουσας εβδομάδας:");
+
             Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
             await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
 
@@ -133,20 +135,19 @@ namespace Phoenix.Bot.Dialogs.Actions
             int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRole.IsStaff()).Select(c => c.Id).ToArray();
             var lectures = lectureRepository.FindMany(courseIds, date);
 
-            if (!lectures.Any())
+            int dayOffset = (date - DateTime.UtcNow.Date).Days;
+            string dayName = dayOffset switch
             {
-                int dayOffset = (DateTime.UtcNow.Date - date).Days;
-                string dayName = dayOffset switch
-                {
-                    -1 => "χθες",
-                    0  => "σήμερα",
-                    1  => "αύριο",
-                    var o when o >= 2 && o <= 7 => $"την {date:dddd}",
-                    _  => $"τις {date:d/M}"
-                };
+                var o when o <= -2 && o > -7 => $"{(date.DayOfWeek == DayOfWeek.Saturday ? "το προηγούμενο" : "την προηγούμενη")} {date:dddd}",
+                -1 => "χθες",
+                0 => "σήμερα",
+                1 => "αύριο",
+                var o when o >= 2 && o < 7 => $"{(date.DayOfWeek == DayOfWeek.Saturday ? "το επόμενο" : "την επόμενη")} {date:dddd}",
+                _ => $"τις {date:d/M}"
+            };
 
+            if (!lectures.Any())
                 await stepContext.Context.SendActivityAsync($"Δεν {(dayOffset >= 0 ? "έχεις" : "είχες")} μαθήματα για {dayName}! 😎");
-            }
             else
             {
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
@@ -164,12 +165,15 @@ namespace Phoenix.Bot.Dialogs.Actions
                     card.Body.Add(new AdaptiveRichFactSetLight("Κατάσταση ", lec.Status.ToGreekString(), separator: true));
                     card.Body.Add(new AdaptiveRichFactSetLight("Σχόλια ", string.IsNullOrEmpty(lec.Info) ? "-" : lec.Info, separator: true));
                 }
+
+                await stepContext.Context.SendActivityAsync($"Ορίστε το πρόγραμμα για {dayName}:");
+
                 Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
                 await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
             }
 
             return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt), new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα"));
+                nameof(UnaccentedChoicePrompt), new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα;"));
         }
 
         #endregion

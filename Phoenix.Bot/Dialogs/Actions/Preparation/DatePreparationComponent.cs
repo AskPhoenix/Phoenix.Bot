@@ -108,6 +108,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                 string text = stepContext.Context.Activity.Text;
                 text = text.ToUnaccented().ToUpper();
 
+                //TODO: Έλγχος offset από το σήμερα αντί για κείμενο
                 switch (text)
                 {
                     case "ΧΘΕΣ":
