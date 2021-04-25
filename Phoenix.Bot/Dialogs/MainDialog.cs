@@ -60,6 +60,19 @@ namespace Phoenix.Bot.Dialogs
             InitialDialogId = WaterfallNames.Main.Top;
         }
 
+        //TODO: Use Enum for errors
+        private async Task<DialogTurnResult> ExitAsync(string message, string solution, int error, WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            await stepContext.Context.SendActivityAsync($"{message} (Κωδ. σφάλματος: {error.ToString("D4"):0})");
+
+            if (!string.IsNullOrEmpty(solution))
+                await stepContext.Context.SendActivityAsync(solution);
+            else
+                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για την επίλυση του προβλήματος.");
+
+            return await stepContext.CancelAllDialogsAsync(cancellationToken);
+        }
+
         #region Top Waterfall Dialog
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -90,16 +103,17 @@ namespace Phoenix.Bot.Dialogs
             var user = userRepository.FindUserFromLogin(provider, providerKey);
             if (user == null)
             {
-                await stepContext.Context.SendActivityAsync("Δυστυχώς υπήρξε ένα πρόβλημα. Παρακαλώ προσπαθήστε ξανά αργότερα " +
-                    "ή επικοινωνήστε με το φροντιστήριό σας.");
-                return await this.LoopStepAsync(stepContext, cancellationToken);
+                string errorMessage = "Δε βρέθηκε χρήστης με το λογαρισμό από τον οποίο προσπαθείς να συνδεθείς.";
+                string solutionsMessage = "Γράψε την εντολή \"Logout\" και προσπάθησε ξανά.";
+                
+                return await this.ExitAsync(errorMessage, solutionsMessage, error: 1, stepContext, cancellationToken);
             }
             
             if (role == Role.Parent && !userRepository.AnyAffiliatedUsers(user.Id))
             {
-                await stepContext.Context.SendActivityAsync("Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.");
-                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινωνήστε με το φροντιστήριό σας για την επίλυση του προβλήματος.");
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+                string errorMessage = "Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.";
+
+                return await this.ExitAsync(errorMessage, solution: null, error: 2, stepContext, cancellationToken);
             }
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
@@ -149,11 +163,11 @@ namespace Phoenix.Bot.Dialogs
 
             bool isStaffOrBackend = userRoles.Any(r => r.IsStaff() || r.IsBackend());
             bool invalidMultipleRoles = userRoles.Length > 2 || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !isStaffOrBackend));
-            if (invalidMultipleRoles)
+            if (invalidMultipleRoles || !userRoles.Any())
             {
-                await stepContext.Context.SendActivityAsync("Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.");
-                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για να διορθωθεί το πρόβλημα");
-                return await this.LoopStepAsync(stepContext, cancellationToken);
+                string errorMessage = "Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.";
+
+                return await this.ExitAsync(errorMessage, solution: null, error: 3, stepContext, cancellationToken);
             }
 
             return await stepContext.NextAsync(userRoles, cancellationToken);
