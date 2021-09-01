@@ -130,7 +130,7 @@ namespace Phoenix.Bot.Dialogs
                     AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, homeOptions.Action);
                     return await stepContext.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, cancellationToken);
                 case BotAction.Broadcast:
-                    return await stepContext.BeginDialogAsync(nameof(BroadcastDialog), new BroadcastOptions(actionOptions), cancellationToken);
+                    return await stepContext.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, cancellationToken);
 
                 case BotAction.Help:
                     return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), cancellationToken);
