@@ -58,6 +58,7 @@ namespace Phoenix.Bot
             services.AddScoped<GradesDialog>();
             services.AddScoped<AccessDialog>();
             services.AddScoped<AssignmentsManagementDialog>();
+            services.AddScoped<BroadcastDialog>();
 
             services.AddScoped<HelpDialog>();
             services.AddScoped<FeedbackDialog>();
