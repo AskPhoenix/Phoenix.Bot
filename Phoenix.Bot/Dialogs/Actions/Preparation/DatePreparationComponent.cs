@@ -100,32 +100,10 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
         protected override async Task<DialogTurnResult> SelectStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            DateTimeOffset resolvedDate;
-            var result = stepContext.Result as IList<DateTimeResolution>;
+            var msg = stepContext.Context.Activity.Text;
+            var res = stepContext.Result as IList<DateTimeResolution>;
 
-            if (result is null || !result.Any())
-            {
-                string text = stepContext.Context.Activity.Text;
-                text = text.ToUnaccented().ToUpper();
-
-                //TODO: Έλγχος offset από το σήμερα αντί για κείμενο
-                switch (text)
-                {
-                    case "ΧΘΕΣ":
-                        resolvedDate = DateTimeOffset.UtcNow.AddDays(-1).Date;
-                        break;
-                    case "ΣΗΜΕΡΑ":
-                        resolvedDate = DateTimeOffset.UtcNow.Date;
-                        break;
-                    case "ΑΥΡΙΟ":
-                        resolvedDate = DateTimeOffset.UtcNow.AddDays(1).Date;
-                        break;
-                    default:
-                        return await stepContext.EndDialogAsync(null, cancellationToken);
-                }
-            }
-            else
-                resolvedDate = CalendarExtensions.ResolveDateTime(stepContext.Result as IList<DateTimeResolution>);
+            var resolvedDate = CalendarExtensions.ResolveDateTimePromptResult(res, msg);
 
             return await stepContext.EndDialogAsync(resolvedDate, cancellationToken);
         }
