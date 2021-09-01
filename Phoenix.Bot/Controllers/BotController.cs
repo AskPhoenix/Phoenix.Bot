@@ -13,7 +13,7 @@ namespace Phoenix.Bot.Controllers
     [ApiController]
     public class BotController : ControllerBase
     {
-        private IBotFrameworkHttpAdapter Adapter;
+        private readonly IBotFrameworkHttpAdapter Adapter;
         private readonly IBot Bot;
 
         public BotController(IBotFrameworkHttpAdapter adapter, IBot bot, IConfiguration configuration)
