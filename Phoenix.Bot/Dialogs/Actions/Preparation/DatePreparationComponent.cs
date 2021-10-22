@@ -43,7 +43,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             }
             else                // Teacher --> Assignments, Grades
             {
-                int[] courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRole.IsStaff()).Select(c => c.Id).ToArray();
+                int[] courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRoles.Contains(Role.Teacher)).Select(c => c.Id).ToArray();
                 dates = lectureRepository.FindClosestLectureDates(courseIds, Tense.Anytime, 
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }

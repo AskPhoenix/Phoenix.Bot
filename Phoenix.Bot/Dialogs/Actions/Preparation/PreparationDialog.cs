@@ -7,6 +7,7 @@ using Phoenix.DataHandle.Main;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -72,7 +73,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (preparationOptions.CourseId.HasValue)
                         return await stepContext.NextAsync(preparationOptions.CourseId.Value, cancellationToken);
 
-                    int userIdToPrepareFor = preparationOptions.UserRole == Role.Parent
+                    int userIdToPrepareFor = preparationOptions.UserRoles.Contains(Role.Parent)
                         ? preparationOptions.AffiliatedUserId.Value
                         : preparationOptions.UserId;
                     preparationComponentOptions = new PreparationComponentOptions(userIdToPrepareFor, true, preparationOptions);
