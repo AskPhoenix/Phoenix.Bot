@@ -96,7 +96,8 @@ namespace Phoenix.Bot.Dialogs.Actions
             if (broadcast.Visibility == BroadcastVisibility.Group)
             {
                 var course = await courseRepository.Find(broadcast.CourseId.Value);
-                visibilityText += " " + course.Name + " ~ " + course.Group;
+                visibilityText += ": " + course.Name + (course.SubCourse != null ? " - " + course.SubCourse : "") + 
+                    " ~ " + course.Group;
             }
             card.Body.Add(new AdaptiveRichFactSetLight("Ορατότητα ", visibilityText, separator: true));
 
@@ -125,6 +126,8 @@ namespace Phoenix.Bot.Dialogs.Actions
 
             string schoolPageId = stepContext.Context.Activity.Recipient.Id;
             broadcast.SchoolId = (await this.schoolRepository.Find(s => s.FacebookPageId == schoolPageId)).Id;
+            broadcast.CreatedByUserId = (stepContext.Options as ActionOptions).UserId;
+            broadcast.Status = BroadcastStatus.Pending;
 
             this.broadcastRepository.Create(broadcast);
 
