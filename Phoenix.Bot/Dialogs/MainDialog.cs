@@ -92,7 +92,7 @@ namespace Phoenix.Bot.Dialogs
                 return await this.LoopStepAsync(stepContext, cancellationToken);
 
             var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.RolesChecked)
+            if (mainState.IsRoleChecked)
                 return await stepContext.NextAsync(cancellationToken: cancellationToken);
 
             return await stepContext.BeginDialogAsync(WaterfallNames.Main.Role, null, cancellationToken);
@@ -114,7 +114,7 @@ namespace Phoenix.Bot.Dialogs
                 return await this.ExitAsync(errorMessage, solutionsMessage, error: 1, stepContext, cancellationToken);
             }
             
-            if (mainState.SelectedRoles.Contains(Role.Parent) && !userRepository.AnyAffiliatedUsers(user.Id))
+            if (mainState.SelectedRole == Role.Parent && !userRepository.AnyAffiliatedUsers(user.Id))
             {
                 string errorMessage = "Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.";
 
@@ -122,7 +122,7 @@ namespace Phoenix.Bot.Dialogs
             }
 
             var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
-            var homeOptions = new HomeOptions(user.Id, mainState.SelectedRoles) { Action = BotAction.NoAction };
+            var homeOptions = new HomeOptions(user.Id, mainState.SelectedRole) { Action = BotAction.NoAction };
             
             if ((int)conversationData.Command >= CommandAttributes.ActionCommandsBase)
                 homeOptions.Action = (BotAction)(conversationData.Command - CommandAttributes.ActionCommandsBase + 1);
@@ -150,24 +150,22 @@ namespace Phoenix.Bot.Dialogs
             var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
 
             bool isStaffOrBackend = userRoles.Any(r => r.IsStaff() || r.IsBackend());
-            bool invalidMultipleRoles = userRoles.Length > 2 
-                || (userRoles.Length == 2 && 
-                (!(userRoles.Contains(Role.Parent) || userRoles.Contains(Role.Teacher)) || !isStaffOrBackend));
+            bool invalidMultipleRoles = userRoles.Length > 2
+                || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !isStaffOrBackend));
 
             if (invalidMultipleRoles || !userRoles.Any())
             {
                 string errorMessage = "Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.";
-
                 return await this.ExitAsync(errorMessage, solution: null, error: 3, stepContext, cancellationToken);
             }
 
-            if (userRoles.Any(r => r.IsBackend()) || (userRoles.Contains(Role.Parent) && userRoles.Any(r => r.IsStaff())))
+            if (userRoles.Any(r => r.IsBackend()) || userRoles.Length == 2)
                 return await stepContext.NextAsync(userRoles, cancellationToken);
 
             mainState = new MainState
             {
-                RolesChecked = true,
-                SelectedRoles = userRoles
+                IsRoleChecked = true,
+                SelectedRole = userRoles.Single()
             };
             await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
 
@@ -201,8 +199,8 @@ namespace Phoenix.Bot.Dialogs
 
             var mainState = new MainState
             {
-                RolesChecked = true,
-                SelectedRoles = new Role[] { selRole }
+                IsRoleChecked = true,
+                SelectedRole = selRole
             };
             await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
 

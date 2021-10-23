@@ -73,7 +73,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
                     if (preparationOptions.CourseId.HasValue)
                         return await stepContext.NextAsync(preparationOptions.CourseId.Value, cancellationToken);
 
-                    int userIdToPrepareFor = preparationOptions.UserRoles.Contains(Role.Parent)
+                    int userIdToPrepareFor = preparationOptions.UserRole == Role.Parent
                         ? preparationOptions.AffiliatedUserId.Value
                         : preparationOptions.UserId;
                     preparationComponentOptions = new PreparationComponentOptions(userIdToPrepareFor, true, preparationOptions);

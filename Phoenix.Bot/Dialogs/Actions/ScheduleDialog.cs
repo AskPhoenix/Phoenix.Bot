@@ -68,7 +68,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> WeeklyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var scheduleOptions = stepContext.Options as ScheduleOptions;
-            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRoles.Contains(Role.Teacher)).Select(c => c.Id).ToArray();
+            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRole == Role.Teacher).Select(c => c.Id).ToArray();
             DateTime closestDate = lectureRepository.FindClosestLectureDates(courseIds, Tense.Future, dayRange: 1).SingleOrDefault();
             
             //This error occurs only when there are no Lectures, which should not be the case.
@@ -132,7 +132,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         {
             var scheduleOptions = stepContext.Options as ScheduleOptions;
             DateTime date = scheduleOptions.DateToPrepareFor.Value.Date;
-            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRoles.Contains(Role.Teacher)).Select(c => c.Id).ToArray();
+            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRole == Role.Teacher).Select(c => c.Id).ToArray();
             var lectures = lectureRepository.FindMany(courseIds, date);
 
             int dayOffset = (date - DateTime.UtcNow.Date).Days;

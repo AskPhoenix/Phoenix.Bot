@@ -43,7 +43,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             }
             else
             {
-                courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRoles.Contains(Role.Teacher)).Select(c => c.Id).ToArray();
+                courseIds = courseRepository.FindForUser(options.IdToPrepareFor, options.UserRole == Role.Teacher).Select(c => c.Id).ToArray();
                 lectures = lectureRepository.FindMany(courseIds, dateToPrepareFor.Date,
                     scheduledOnly: true, withExamsOnly: options.ExamsOnly);
             }

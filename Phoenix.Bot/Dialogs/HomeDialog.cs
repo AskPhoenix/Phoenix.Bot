@@ -71,7 +71,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
-                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRoles, removePendingActions: true),
+                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRole, removePendingActions: true),
                     Style = ListStyle.SuggestedAction
                 },
                 cancellationToken);
@@ -81,9 +81,9 @@ namespace Phoenix.Bot.Dialogs
         {
             var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                homeOptions.Action = BotActionHelper.GetMenuActions(homeOptions.UserRoles, removePendingActions: true).ElementAt(foundChoice.Index);
+                homeOptions.Action = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true).ElementAt(foundChoice.Index);
 
-            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRoles).Contains(homeOptions.Action) 
+            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action) 
                 || homeOptions.Action.IsNonMenuAction();
             if (!isValidAction)
             {
@@ -91,7 +91,7 @@ namespace Phoenix.Bot.Dialogs
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            var preparations = BotActionPreparationHelper.GetPreparations(homeOptions.Action, homeOptions.UserRoles);
+            var preparations = BotActionPreparationHelper.GetPreparations(homeOptions.Action, homeOptions.UserRole);
             var preparationOptions = new PreparationOptions(preparations, homeOptions);
 
             return await stepContext.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, cancellationToken);
