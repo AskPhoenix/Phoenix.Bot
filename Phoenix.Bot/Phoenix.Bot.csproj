@@ -10,7 +10,7 @@
     <Copyright>AskPhoenix 2021</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
-    <Version>2.1.0-beta.4</Version>
+    <Version>2.1.0-beta.5</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,7 +22,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.20" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.20" />
     <PackageReference Include="Phoenix.Bot.Utilities" Version="2.1.0-beta.24" />
-    <PackageReference Include="Phoenix.DataHandle" Version="2.1.0-beta.6" />
+    <PackageReference Include="Phoenix.DataHandle" Version="2.1.0-beta.8" />
   </ItemGroup>
 
     <ItemGroup>
