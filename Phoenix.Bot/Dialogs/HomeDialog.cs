@@ -8,6 +8,7 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.DataHandle.Main;
 using System;
 using System.Linq;
 using System.Threading;
@@ -23,6 +24,7 @@ namespace Phoenix.Bot.Dialogs
             AccessDialog accessDialog,
             GradesDialog gradesDialog, ScheduleDialog scheduleDialog,
             AssignmentsManagementDialog assignmentsManagementDialog,
+            BroadcastDialog broadcastDialog,
             HelpDialog helpDialog, FeedbackDialog feedbackDialog)
             : base(nameof(HomeDialog))
         {
@@ -38,6 +40,7 @@ namespace Phoenix.Bot.Dialogs
             AddDialog(gradesDialog);
 
             AddDialog(assignmentsManagementDialog);
+            AddDialog(broadcastDialog);
 
             AddDialog(helpDialog);
             AddDialog(feedbackDialog);
@@ -128,7 +131,7 @@ namespace Phoenix.Bot.Dialogs
                     AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, homeOptions.Action);
                     return await stepContext.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, cancellationToken);
                 case BotAction.Broadcast:
-                    goto default;
+                    return await stepContext.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, cancellationToken);
 
                 case BotAction.Help:
                     return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), cancellationToken);
