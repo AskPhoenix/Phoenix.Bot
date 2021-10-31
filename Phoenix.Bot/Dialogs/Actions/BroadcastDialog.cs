@@ -18,6 +18,7 @@ using Phoenix.DataHandle.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,6 +29,9 @@ namespace Phoenix.Bot.Dialogs.Actions
         private readonly SchoolRepository schoolRepository;
         private readonly CourseRepository courseRepository;
         private readonly BroadcastRepository broadcastRepository;
+
+        private static readonly HttpClient httpClient = new();
+        private const string ProactiveBotUrl = "https://proactive.bot.askphoenix.gr/";
 
         public BroadcastDialog(PhoenixContext phoenixContext)
             : base(nameof(BroadcastDialog))
@@ -131,7 +135,16 @@ namespace Phoenix.Bot.Dialogs.Actions
 
             this.broadcastRepository.Create(broadcast);
 
-            await stepContext.Context.SendActivityAsync("Η ανακοίνωση καταχωρήθηκε επιτυχώς!");
+            //TODO: Implement SendBroadcast functionality in Phoenix.Bot.Utilities and call it here ?
+            if (broadcast.Daypart == Daypart.Now)
+            {
+                await httpClient.PostAsync(ProactiveBotUrl + $"broadcast/id/{broadcast.Id}", null);
+                await stepContext.Context.SendActivityAsync("Η ανακοίνωση καταχωρήθηκε και εστάλη επιτυχώς!");
+            }
+            else
+            {
+                await stepContext.Context.SendActivityAsync("Η ανακοίνωση καταχωρήθηκε επιτυχώς!");
+            }
 
             return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
         }
