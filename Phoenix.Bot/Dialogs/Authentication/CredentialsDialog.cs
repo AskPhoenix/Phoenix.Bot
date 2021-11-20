@@ -40,7 +40,7 @@ namespace Phoenix.Bot.Dialogs.Authentication
                 {
                     AskPhoneStepAsync,
                     EligibilityStepAsync,
-                    ConfirmationStepAsync,
+                    VerificationStepAsync,
                     PostVerificationStepAsync
                 }));
 
@@ -71,91 +71,91 @@ namespace Phoenix.Bot.Dialogs.Authentication
             var phoneOwner = await userRepository.Find(checkUnique: u => u.PhoneNumber == phone && u.User.IsSelfDetermined);
 
             //TODO: Move to Repository
-            // Super users are assigned to a school
             bool isAssignedToCurrentSchool = phoneOwner is not null && 
                 (phoneOwner.UserSchool?.Any(us => us.School.FacebookPageId == activity.Recipient.Id) ?? false);
 
             if (!isAssignedToCurrentSchool)
             {
-                await stepContext.Context.SendActivityAsync("Το κινητό τηλέφωνο δε βρέθηκε. Ας προσπαθήσουμε ξανά, πιο προσεκτικά!");
-                return await stepContext.ReplaceDialogAsync(InitialDialogId, new CredentialsOptions(), cancellationToken);
+                bool isSuper = userRepository.FindRoles(phoneOwner).Any(r => r.Type.IsSuper());
+                if (!isSuper)
+                {
+                    await stepContext.Context.SendActivityAsync("Το κινητό τηλέφωνο δε βρέθηκε. " +
+                        "Ας προσπαθήσουμε ξανά, πιο προσεκτικά!");
+                    return await stepContext.ReplaceDialogAsync(InitialDialogId, new CredentialsOptions(), cancellationToken);
+                }
             }
 
             credentialsOptions.PhoneOwnerUserId = phoneOwner.Id;
 
             var ownerLogins = phoneOwner.AspNetUserLogins?.
                 Where(l => l.LoginProvider == activity.ChannelId.ToLoginProvider().GetProviderName());
+            
+            bool isOwnerLoggedIn = ownerLogins != null && ownerLogins.Any(l => l.IsActive);
+            bool hasAffiliatedUsers = userRepository.AnyAffiliatedUsers(phoneOwner.Id);
 
-            //False means that it is unknown whom the current user is (it could be the owner)
-            bool providerKeyBelongsToOwner = ownerLogins?.Any(l => l.ProviderKey == activity.From.Id) ?? false;
-
-            //Verification of the owner
-            if (ownerLogins is null || !ownerLogins.Any() || ownerLogins.All(l => !l.IsActive) || providerKeyBelongsToOwner)
+            if (hasAffiliatedUsers)
             {
-                credentialsOptions.IsOwnerAuthentication = true;
-                credentialsOptions.VerifiedUserId = phoneOwner.Id;
-
-                if (userRepository.AnyAffiliatedUsers(phoneOwner.Id) && !providerKeyBelongsToOwner)
+                if (isOwnerLoggedIn)
                 {
-                    await stepContext.Context.SendActivityAsync("Υπενθυμίζεται πως η πρώτη σύνδεση πρέπει να γίνει από τον ιδιοκτήτη του αριθμού.");
-                    return await stepContext.PromptAsync(nameof(UnaccentedChoicePrompt), 
-                        new YesNoPromptOptions("Ο αριθμός ανήκει σε εμένα και επιθυμώ να συνεχίσω:", simpleNo: true), cancellationToken);
+                    return await stepContext.PromptAsync(
+                        nameof(UnaccentedChoicePrompt),
+                        new PromptOptions
+                        {
+                            Prompt = MessageFactory.Text("Ποιος πρόκειται να συνδεθεί;"),
+                            RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε μία από τις παρακάτω επιλογές:"),
+                            Choices = ChoiceFactory.ToChoices(new[] { "Γονέας", "Μαθητής" })
+                        });
                 }
-                
-                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), new VerificationOptions(credentialsOptions), cancellationToken);
             }
 
-            //Verify another member
-            var affiliatedUsers = userRepository.FindChildren(phoneOwner.Id).Where(u => !u.User.IsSelfDetermined);
-            if (!affiliatedUsers.Any())
+            return await stepContext.NextAsync(null, cancellationToken);
+        }
+
+        private async Task<DialogTurnResult> VerificationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var credentialsOptions = stepContext.Options as CredentialsOptions;
+            credentialsOptions.IsOwnerAuthentication = 
+                stepContext.Result is not FoundChoice foundChoice || foundChoice.Index == 0;
+            
+            if (credentialsOptions.IsOwnerAuthentication)
             {
-                await stepContext.Context.SendActivityAsync("Ο αριθμός αυτός δεν έχει συσχετιστεί με άλλους χρήστες.");
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+                //TODO: Log out the owner from other logins of this provider ?
+
+                credentialsOptions.VerifiedUserId = credentialsOptions.PhoneOwnerUserId;
+
+                await stepContext.Context.SendActivityAsync("Εντάξει, ας συνεχίσουμε!");
+                return await stepContext.BeginDialogAsync(nameof(VerificationDialog),
+                    new VerificationOptions(credentialsOptions), cancellationToken);
             }
+
+            var affiliatedUsers = userRepository.
+                FindChildren(credentialsOptions.PhoneOwnerUserId).
+                Where(u => !u.User.IsSelfDetermined);
 
             foreach (var affUser in affiliatedUsers)
             {
                 string code = affUser.User.IdentifierCode;
                 var codeCreatedAt = affUser.User.IdentifierCodeCreatedAt;
-                if (!string.IsNullOrEmpty(code) && codeCreatedAt.HasValue && !CredentialsOptions.IsCodeExpired(codeCreatedAt.Value))
+
+                if (!string.IsNullOrEmpty(code) && codeCreatedAt.HasValue && 
+                    !CredentialsOptions.IsCodeExpired(codeCreatedAt.Value))
                 {
                     credentialsOptions.Codes.Add(code, affUser.Id);
                     credentialsOptions.CodesCreatedAt.Add(code, affUser.User.IdentifierCodeCreatedAt.Value);
                 }
             }
-            
+
             if (!credentialsOptions.Codes.Any())
             {
                 await stepContext.Context.SendActivityAsync("Δεν υπάρχουν ενεργοί κωδικοί επαλήθευσης προς το παρόν.");
-                await stepContext.Context.SendActivityAsync("Επικοινωνήστε με τον ιδιοκτήτη του αριθμού " +
-                    "ώστε να δημιουργήσει έναν κωδικό για να συνδεθείτε και προσπαθήστε ξανά.");
+                await stepContext.Context.SendActivityAsync("Ζήτησε από τον γονέα σου να δημιουργήσει νέους " +
+                    "στην κατηγορία «🗝 Πρόσβαση» και προσπάθησε ξανά.");
+
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            credentialsOptions.IsOwnerAuthentication = false;
-            return await stepContext.BeginDialogAsync(nameof(VerificationDialog), new VerificationOptions(credentialsOptions), cancellationToken);
-        }
-
-        private async Task<DialogTurnResult> ConfirmationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            if (stepContext.Result is not FoundChoice foundChoice)
-                return await stepContext.NextAsync(stepContext.Result, cancellationToken);
-
-            var credentialsOptions = stepContext.Options as CredentialsOptions;
-
-            if (foundChoice.Index == 0)
-            {
-                await stepContext.Context.SendActivityAsync("Εντάξει, ας συνεχίσουμε!");
-                return await stepContext.BeginDialogAsync(nameof(VerificationDialog), new VerificationOptions(credentialsOptions), cancellationToken);
-            }
-            
-            await stepContext.Context.SendActivityAsync("Παρακαλώ συνδεθείτε από τον λογαρισμό του ιδιοκτήτη του αριθμού, ώστε να ενεργοποιηθούν" +
-                " οι συνδέσεις των υπόλοιπων μελών.");
-
-            credentialsOptions.IsOwnerAuthentication = false;
-            credentialsOptions.VerifiedUserId = null;
-
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepContext.BeginDialogAsync(nameof(VerificationDialog),
+                new VerificationOptions(credentialsOptions), cancellationToken);
         }
 
         private async Task<DialogTurnResult> PostVerificationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
