@@ -8,7 +8,7 @@ read token
 
 curl -X POST -H "Content-Type: application/json" -d '{
   "get_started": {"payload": "--get-started--"}
-}' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
+}' "https://graph.facebook.com/v12.0/me/messenger_profile?access_token=$token"
 
 echo ''
 
@@ -39,7 +39,7 @@ echo ''
 #             ]
 #         }
 #     ]
-# }' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
+# }' "https://graph.facebook.com/v12.0/me/messenger_profile?access_token=$token"
 # 
 # echo ''
 
@@ -53,7 +53,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "https://pwa.askphoenix.gr/",
     "https://teacher.askphoenix.gr/"
   ]
-}' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
+}' "https://graph.facebook.com/v12.0/me/messenger_profile?access_token=$token"
 
 echo ''
 
@@ -71,6 +71,6 @@ curl -X POST -H "Content-Type: application/json" -d '{
       "text":"Καλωσορίσατε στον ψηφιακό βοηθό μας!"
     }
   ]
-}' "https://graph.facebook.com/v9.0/me/messenger_profile?access_token=$token"
+}' "https://graph.facebook.com/v12.0/me/messenger_profile?access_token=$token"
 
 echo ''
