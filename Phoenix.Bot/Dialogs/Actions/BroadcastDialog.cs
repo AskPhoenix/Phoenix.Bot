@@ -31,7 +31,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         private readonly BroadcastRepository broadcastRepository;
 
         private static readonly HttpClient httpClient = new();
-        private const string ProactiveBotUrl = "https://proactive.bot.askphoenix.gr/";
+        private const string ProactiveBotUrl = "https://phalacrocorax.azurewebsites.net";   //"https://proactive.bot.askphoenix.gr/";
 
         public BroadcastDialog(PhoenixContext phoenixContext)
             : base(nameof(BroadcastDialog))

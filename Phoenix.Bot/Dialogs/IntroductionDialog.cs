@@ -88,12 +88,12 @@ namespace Phoenix.Bot.Dialogs
             {
                 Title = "Όροι Παροχής Υπηρεσιών",
                 Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης.",
-                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html"),
+                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://phoenicopterus.azurewebsites.net/legal/terms-conditions.html"),
                 Buttons = new List<CardAction>
                 {
                     new CardAction(ActionTypes.ImBack, title: "✔️ Συμφωνώ", value: "✔️ Συμφωνώ"),
                     new CardAction(ActionTypes.ImBack, title: "❌ Διαφωνώ", value: "❌ Διαφωνώ"),
-                    new CardAction(ActionTypes.OpenUrl, title: "📖 Ανάγνωση...", value: "https://www.bot.askphoenix.gr/legal/terms-conditions.html")
+                    new CardAction(ActionTypes.OpenUrl, title: "📖 Ανάγνωση...", value: "https://phoenicopterus.azurewebsites.net/legal/terms-conditions.html")
                 }
             };
 
