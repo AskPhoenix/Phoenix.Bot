@@ -65,13 +65,17 @@ namespace Phoenix.Bot.Dialogs
             if (homeOptions.Action != BotAction.NoAction)
                 return await stepContext.NextAsync(null, cancellationToken);
 
+            var choices = BotActionHelper.GetActionChoices(homeOptions.UserRole, removePendingActions: true);
+            // TODO: Bring back Schedule choice (removed temporarily)
+            choices.Remove(choices.Single(c => c.Value.Contains("Πρόγραμμα")));
+
             return await stepContext.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Πώς θα μπορούσα να σε βοηθήσω;"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε ή πληκτρολόγησε μία από τις παρακάτω δυνατότητες:"),
-                    Choices = BotActionHelper.GetActionChoices(homeOptions.UserRole, removePendingActions: true),
+                    Choices = choices,
                     Style = ListStyle.SuggestedAction
                 },
                 cancellationToken);
@@ -81,7 +85,13 @@ namespace Phoenix.Bot.Dialogs
         {
             var homeOptions = stepContext.Options as HomeOptions;
             if (stepContext.Result is FoundChoice foundChoice)
-                homeOptions.Action = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true).ElementAt(foundChoice.Index);
+            {
+                // TODO: Bring back Schedule action selection (removed temporarily)
+                var actions = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true);
+                actions.Remove(actions.Single(a => a == BotAction.ScheduleDaily || a == BotAction.ScheduleWeekly));
+
+                homeOptions.Action = actions.ElementAt(foundChoice.Index);
+            }
 
             bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action) 
                 || homeOptions.Action.IsNonMenuAction();

@@ -50,9 +50,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
   "whitelisted_domains": [
     "https://askphoenix.gr/",
     "https://www.askphoenix.gr/",
-    "https://pwa.askphoenix.gr/",
     "https://teacher.askphoenix.gr/",
-    "https://avocetta.azurewebsites.net/"
+    "https://www.teacher.askphoenix.gr/"
   ]
 }' "https://graph.facebook.com/v12.0/me/messenger_profile?access_token=$token"
 

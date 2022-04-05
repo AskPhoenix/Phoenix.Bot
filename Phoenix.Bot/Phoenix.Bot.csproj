@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <ApplicationInsightsResourceId>/subscriptions/158d7265-c8df-4fbd-96df-1d003a650372/resourceGroups/PhoenixRsrcG/providers/microsoft.insights/components/Nuagesa3ypn</ApplicationInsightsResourceId>
+    <ApplicationInsightsResourceId>/subscriptions/21af8426-0b31-4244-9a9f-50c08ee90ee4/resourceGroups/PhoenicopterusRsrcG/providers/microsoft.insights/components/phoenicopterus</ApplicationInsightsResourceId>
     <UserSecretsId>70734456-ea89-439b-8a3e-ae66329e51e0</UserSecretsId>
     <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
     <Authors>AskPhoenix</Authors>
@@ -14,6 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <_WebToolingArtifacts Remove="Properties\PublishProfiles\Phoenicopterus.pubxml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AdaptiveCards" Version="2.7.3" />
     <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.13.2" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.20.0" />
@@ -21,7 +25,7 @@
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.15.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.22" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="3.1.22" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="2.1.2" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="2.1.3" />
     <PackageReference Include="Phoenix.DataHandle" Version="2.1.0" />
   </ItemGroup>
 
