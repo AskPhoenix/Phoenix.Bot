@@ -1,19 +1,18 @@
-﻿using Microsoft.Bot.Builder;
+﻿using Bot.Builder.Community.Storage.EntityFramework;
+using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
+using Microsoft.Extensions.Configuration;
+using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Linguistic;
+using Phoenix.Bot.Utilities.State;
+using Phoenix.DataHandle.Main.Models;
+using Phoenix.DataHandle.Repositories;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Phoenix.Bot.Utilities.Dialogs;
-using Microsoft.Extensions.Configuration;
-using Phoenix.Bot.Utilities.State;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Main;
-using Bot.Builder.Community.Storage.EntityFramework;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace Phoenix.Bot.Bots
 {
@@ -22,26 +21,31 @@ namespace Phoenix.Bot.Bots
         private readonly IConfiguration configuration;
         private readonly BotState conversationState;
         private readonly BotState userState;
-        private readonly AspNetUserRepository userRepository;
+        private readonly UserRepository userRepository;
         private readonly BotDataContext botDataContext;
 
         protected readonly Dialog Dialog;
 
-        public DialogBot(IConfiguration configuration, ConversationState conversationState, UserState userState, 
-            PhoenixContext phoenixContext, BotDataContext botDataContext,
+        public DialogBot(
+            IConfiguration configuration,
+            ConversationState conversationState,
+            UserState userState, 
+            PhoenixContext phoenixContext,
+            BotDataContext botDataContext,
             T dialog)
         {
             this.configuration = configuration;
             this.conversationState = conversationState;
             this.userState = userState;
 
-            this.userRepository = new AspNetUserRepository(phoenixContext);
+            this.userRepository = new(phoenixContext);
             this.botDataContext = botDataContext;
 
             this.Dialog = dialog;
         }
 
-        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
+        public override async Task OnTurnAsync(ITurnContext turnContext,
+            CancellationToken cancellationToken = default)
         {
             if (turnContext.Activity.Text == null)
                 turnContext.Activity.Text = string.Empty;
@@ -56,7 +60,8 @@ namespace Phoenix.Bot.Bots
             catch (Exception) { }
         }
 
-        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext,
+            CancellationToken cancellationToken = default)
         {
             string mess = turnContext.Activity.Text;
             var cmd = Command.NoCommand;
@@ -117,7 +122,6 @@ namespace Phoenix.Bot.Bots
                 }
             }
 
-            
             var conversationData = await conversationDataAccessor.GetAsync(turnContext, null, cancellationToken);
             conversationData.Command = cmd;
             await conversationDataAccessor.SetAsync(turnContext, conversationData, cancellationToken);

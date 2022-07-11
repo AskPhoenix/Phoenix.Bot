@@ -1,8 +1,7 @@
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
-using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Controllers
 {
@@ -13,13 +12,13 @@ namespace Phoenix.Bot.Controllers
     [ApiController]
     public class BotController : ControllerBase
     {
-        private readonly IBotFrameworkHttpAdapter Adapter;
-        private readonly IBot Bot;
+        private readonly IBotFrameworkHttpAdapter _adapter;
+        private readonly IBot _bot;
 
-        public BotController(IBotFrameworkHttpAdapter adapter, IBot bot, IConfiguration configuration)
+        public BotController(IBotFrameworkHttpAdapter adapter, IBot bot)
         {
-            Adapter = adapter;
-            Bot = bot;
+            _adapter = adapter;
+            _bot = bot;
         }
 
         [HttpPost, HttpGet]
@@ -27,7 +26,7 @@ namespace Phoenix.Bot.Controllers
         {
             // Delegate the processing of the HTTP POST to the adapter.
             // The adapter will invoke the bot.
-            await Adapter.ProcessAsync(Request, Response, Bot);
+            await _adapter.ProcessAsync(Request, Response, _bot);
         }
     }
 }
