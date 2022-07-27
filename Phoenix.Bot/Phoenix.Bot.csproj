@@ -15,28 +15,19 @@
 
   <ItemGroup>
     <_WebToolingArtifacts Remove="Properties\PublishProfiles\Phoenicopterus.pubxml" />
+	<_WebToolingArtifacts Remove="Properties\PublishProfiles\Tourlida.pubxml" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdaptiveCards" Version="2.7.3" />
-    <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.13.4" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.20.0" />
-    <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.16.1" />
-    <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.16.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.6" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.6" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.1" />
-    <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.42" />
+    <PackageReference Include="AdaptiveCards" Version="2.7.*" />
+    <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.13.*" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.*" />
+    <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.16.*" />
+    <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.16.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.*" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.*" />
+    <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.*" />
   </ItemGroup>
-
-    <ItemGroup>
-      <WCFMetadata Include="Connected Services" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Content Update="NuGet.config">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </Content>
-    </ItemGroup>
 
 </Project>
