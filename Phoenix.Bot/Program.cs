@@ -1,12 +1,7 @@
 using Bot.Builder.Community.Storage.EntityFramework;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Bot.Builder;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Actions;
@@ -14,8 +9,7 @@ using Phoenix.Bot.Dialogs.Actions.Preparation;
 using Phoenix.Bot.Dialogs.Authentication;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Sms;
-using System;
+using Phoenix.DataHandle.Senders;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -43,15 +37,7 @@ builder.Services.AddDbContext<BotDataContext>(buildDbContextOptions);
 
 # region Identity
 
-builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(o =>
-{
-    o.User.AllowedUserNameCharacters = null;
-    o.Password.RequireDigit = false;
-    o.Password.RequireLowercase = false;
-    o.Password.RequireNonAlphanumeric = false;
-    o.Password.RequireUppercase = false;
-    o.Password.RequiredLength = 6;
-})
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
     .AddRoles<ApplicationRole>()
     .AddUserStore<ApplicationStore>()
     .AddUserManager<ApplicationUserManager>()
@@ -107,12 +93,13 @@ builder.Services.AddTransient<IBot, DialogBot<MainDialog>>();
 
 # region Miscellaneous Services
 
+builder.Services.AddApplicationInsightsTelemetry(
+    o => o.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]);
+
 builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
-builder.Services.AddApplicationInsightsTelemetry(builder.Configuration["ApplicationInsights:ConnectionString"]);
-
-builder.Services.AddScoped<ISmsService>(_ =>
-    new SmsService(builder.Configuration["NexmoSMS:ApiKey"], builder.Configuration["NexmoSMS:ApiSecret"]));
+builder.Services.AddScoped(_ =>
+    new SmsSender(builder.Configuration["Vonage:Key"], builder.Configuration["Vonage:Secret"]));
 
 #endregion
 
