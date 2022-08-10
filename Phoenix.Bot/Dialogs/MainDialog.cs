@@ -163,8 +163,7 @@ namespace Phoenix.Bot.Dialogs
         private async Task<DialogTurnResult> SelectRoleStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
-            if (stepCtx.Result is not FoundChoice foundChoice)
-                return await ExitAsync(stepCtx, canTkn);
+            var foundChoice = (FoundChoice)stepCtx.Result;
 
             var rolesToSel = stepCtx.Values["RolesToSelect"] as RoleRank[];
 
