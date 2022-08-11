@@ -8,40 +8,39 @@ using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Main;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using Phoenix.DataHandle.Identity;
+using Phoenix.DataHandle.Main.Models;
 
 namespace Phoenix.Bot.Dialogs
 {
-    public class HomeDialog : ComponentDialog
+    public class HomeDialog : StateDialog
     {
         public HomeDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext,
+
             PreparationDialog preparationDialog,
-            AssignmentsDialog assignmentsDialog,
             AccessDialog accessDialog,
-            GradesDialog gradesDialog, ScheduleDialog scheduleDialog,
+            AssignmentsDialog assignmentsDialog,
             AssignmentsManagementDialog assignmentsManagementDialog,
             BroadcastDialog broadcastDialog,
-            HelpDialog helpDialog, FeedbackDialog feedbackDialog)
-            : base(nameof(HomeDialog))
+            GradesDialog gradesDialog,
+            ScheduleDialog scheduleDialog,
+            HelpDialog helpDialog,
+            FeedbackDialog feedbackDialog)
+            : base(userState, convState, userManager, phoenixContext, nameof(HomeDialog))
         {
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
             AddDialog(preparationDialog);
-
-            AddDialog(assignmentsDialog);
-
             AddDialog(accessDialog);
-
-            AddDialog(scheduleDialog);
-            AddDialog(gradesDialog);
-
+            AddDialog(assignmentsDialog);
             AddDialog(assignmentsManagementDialog);
             AddDialog(broadcastDialog);
-
+            AddDialog(gradesDialog);
+            AddDialog(scheduleDialog);
             AddDialog(helpDialog);
             AddDialog(feedbackDialog);
 
@@ -49,7 +48,7 @@ namespace Phoenix.Bot.Dialogs
                 new WaterfallStep[]
                 {
                     MenuStepAsync,
-                    CheckActionValidity,
+                    CheckActionStepAsync,
                     ActionStepAsync,
                     FeedbackStepAsync
                 }));
@@ -59,17 +58,18 @@ namespace Phoenix.Bot.Dialogs
 
         #region Top Waterfall Dialog
 
-        private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var homeOptions = stepContext.Options as HomeOptions;
-            if (homeOptions.Action != BotAction.NoAction)
-                return await stepContext.NextAsync(null, cancellationToken);
+            var options = (HomeOptions)stepCtx.Options;
 
-            var choices = BotActionHelper.GetActionChoices(homeOptions.UserRole, removePendingActions: true);
-            // TODO: Bring back Schedule choice (removed temporarily)
-            choices.Remove(choices.Single(c => c.Value.Contains("Πρόγραμμα")));
+            if (options.Action != BotAction.NoAction)
+                return await stepCtx.NextAsync(null, canTkn);
 
-            return await stepContext.PromptAsync(
+            var choices = BotActionHelper.GetActionChoices(
+                UData.SelectedRole!.Value, removePendingActions: true);
+
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new PromptOptions
                 {
@@ -78,106 +78,110 @@ namespace Phoenix.Bot.Dialogs
                     Choices = choices,
                     Style = ListStyle.SuggestedAction
                 },
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> CheckActionValidity(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> CheckActionStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var homeOptions = stepContext.Options as HomeOptions;
-            if (stepContext.Result is FoundChoice foundChoice)
-            {
-                // TODO: Bring back Schedule action selection (removed temporarily)
-                var actions = BotActionHelper.GetMenuActions(homeOptions.UserRole, removePendingActions: true);
-                actions.Remove(actions.Single(a => a == BotAction.ScheduleDaily || a == BotAction.ScheduleWeekly));
+            var options = (HomeOptions)stepCtx.Options;
+            var userRole = UData.SelectedRole!.Value;
+            var actions = BotActionHelper.GetMenuActions(userRole, removePendingActions: true);
 
-                homeOptions.Action = actions.ElementAt(foundChoice.Index);
-            }
+            if (stepCtx.Result is FoundChoice foundChoice)
+                options.Action = actions.ElementAt(foundChoice.Index);
 
-            bool isValidAction = BotActionHelper.GetMenuActions(homeOptions.UserRole).Contains(homeOptions.Action) 
-                || homeOptions.Action.IsNonMenuAction();
+            bool isValidAction = actions.Contains(options.Action) || options.Action.IsNonMenuAction();
             if (!isValidAction)
             {
-                await stepContext.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+                await stepCtx.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
+                return await stepCtx.EndDialogAsync(null, canTkn);
             }
 
-            var preparations = BotActionPreparationHelper.GetPreparations(homeOptions.Action, homeOptions.UserRole);
-            var preparationOptions = new PreparationOptions(preparations, homeOptions);
+            var preparations = BotActionPreparationHelper.GetPreparations(options.Action, userRole);
+            var preparationOptions = new PreparationOptions(preparations);
 
-            return await stepContext.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, cancellationToken);
+            return await stepCtx.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, canTkn);
         }
 
-        private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            if (stepContext.Result is null)
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+            if (stepCtx.Result is null)
+                return await stepCtx.EndDialogAsync(null, canTkn);
 
-            var homeOptions = stepContext.Options as HomeOptions;
-            var actionOptions = stepContext.Result as ActionOptions;
+            var options = (HomeOptions)stepCtx.Options;
+            var actionOptions = (ActionOptions)stepCtx.Result;
 
-            switch (homeOptions.Action)
+            switch (options.Action)
             {
                 case BotAction.SearchExercises:
                 case BotAction.Assignments:
-                    AssignmentsOptions assignmentsOptions = new(actionOptions, homeOptions.Action);
-                    return await stepContext.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, cancellationToken);
+                    AssignmentsOptions assignmentsOptions = new(actionOptions, options.Action);
+                    return await stepCtx.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, canTkn);
+                
                 case BotAction.Supplementary:
                     goto default;
 
-                case BotAction.ScheduleDaily:
-                case BotAction.ScheduleWeekly:
-                    ScheduleOptions scheduleOptions = new(actionOptions, homeOptions.Action);
-                    return await stepContext.BeginDialogAsync(nameof(ScheduleDialog), scheduleOptions, cancellationToken);
+                case BotAction.ScheduleWeek:
+                case BotAction.ScheduleDay:
+                    ScheduleOptions scheduleOptions = new(actionOptions, options.Action);
+                    return await stepCtx.BeginDialogAsync(nameof(ScheduleDialog), scheduleOptions, canTkn);
+                
                 case BotAction.Grades:
-                    return await stepContext.BeginDialogAsync(nameof(GradesDialog), actionOptions, cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(GradesDialog), actionOptions, canTkn);
+
                 case BotAction.SearchExams:
-                    return await stepContext.BeginDialogAsync(nameof(GradesDialog), actionOptions, cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(GradesDialog), actionOptions, canTkn);
 
                 case BotAction.Access:
-                    return await stepContext.BeginDialogAsync(nameof(AccessDialog), actionOptions, cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(AccessDialog), actionOptions, canTkn);
 
                 case BotAction.Exercises:
                 case BotAction.Exams:
-                    AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, homeOptions.Action);
-                    return await stepContext.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, cancellationToken);
+                    AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, options.Action);
+                    return await stepCtx.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, canTkn);
+                
                 case BotAction.Broadcast:
-                    return await stepContext.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, canTkn);
 
                 case BotAction.Help:
-                    return await stepContext.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), canTkn);
+                
                 case BotAction.Feedback:
                     var feedbackOptions = new FeedbackOptions()
                     {
-                        BotAskedForFeedback = false,
-                        UserId = homeOptions.UserId
+                        BotAskedForFeedback = false
                     };
-                    return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
+                    return await stepCtx.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, canTkn);
 
                 case BotAction.NoAction:
+                
                 default:
-                    await stepContext.Context.SendActivityAsync("Η ενέργεια που ζητήσατε δεν είναι διαθέσιμη προς το παρόν.");
-                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                    await stepCtx.Context.SendActivityAsync("Η ενέργεια που ζητήσατε δεν είναι διαθέσιμη προς το παρόν.");
+                    return await stepCtx.EndDialogAsync(null, canTkn);
             }
         }
 
-        private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> FeedbackStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var homeOptions = stepContext.Options as HomeOptions;
-            var resultAction = stepContext.Result as BotAction?;
+            var options = (HomeOptions)stepCtx.Options;
 
-            if (stepContext.Result is BotAction nextAction)
+            if (stepCtx.Result is BotAction nextAction)
             {
-                homeOptions.Action = nextAction;
-                return await stepContext.ReplaceDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
+                options.Action = nextAction;
+                return await stepCtx.ReplaceDialogAsync(nameof(HomeDialog), options, canTkn);
             }
 
-            if (homeOptions.Action != BotAction.Feedback && homeOptions.Action != BotAction.Help && new Random().Next(3) == 0)
+            if (options.Action != BotAction.Feedback && options.Action != BotAction.Help
+                && new Random().Next(5) == 0)
             {
-                var feedbackOptions = new FeedbackOptions() { BotAskedForFeedback = true, UserId = homeOptions.UserId };
-                return await stepContext.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, cancellationToken);
+                var feedbackOptions = new FeedbackOptions() { BotAskedForFeedback = true };
+                return await stepCtx.BeginDialogAsync(nameof(FeedbackDialog), feedbackOptions, canTkn);
             }
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
