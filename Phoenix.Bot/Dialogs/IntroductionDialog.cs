@@ -3,7 +3,7 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Dialogs.Actions;
-using Phoenix.Bot.Dialogs.Authentication;
+using Phoenix.Bot.Dialogs.Auth;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
 using Phoenix.Bot.Utilities.State.Options;
@@ -41,6 +41,8 @@ namespace Phoenix.Bot.Dialogs
             InitialDialogId = WaterfallNames.Introduction.Top;
         }
 
+        #region Top Waterfall Dialog
+
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
@@ -48,7 +50,7 @@ namespace Phoenix.Bot.Dialogs
 
             var card = new HeroCard
             {
-                Title = UData.School.Name,
+                Title = CData.School.Name,
                 Text = "Πάτησε ή πληκτρολόγησε \"Σύνδεση\" για να ξεκινήσουμε!",
                 Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.askphoenix.gr"),
                 Buttons = new List<CardAction>
@@ -110,7 +112,8 @@ namespace Phoenix.Bot.Dialogs
             }
                 
             await stepCtx.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
-            return await stepCtx.BeginDialogAsync(nameof(AuthenticationDialog), null, canTkn);
+            return await stepCtx.BeginDialogAsync(
+                nameof(AuthenticationDialog), new AuthenticationOptions(), canTkn);
         }
 
         private async Task<DialogTurnResult> WelcomeAskStepAsync(WaterfallStepContext stepCtx,
@@ -134,5 +137,7 @@ namespace Phoenix.Bot.Dialogs
         {
             return await stepCtx.EndDialogAsync(true, canTkn);
         }
+
+        #endregion
     }
 }

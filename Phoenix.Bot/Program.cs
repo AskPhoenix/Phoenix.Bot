@@ -6,7 +6,7 @@ using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.Bot.Dialogs.Actions.Preparation;
-using Phoenix.Bot.Dialogs.Authentication;
+using Phoenix.Bot.Dialogs.Auth;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Senders;

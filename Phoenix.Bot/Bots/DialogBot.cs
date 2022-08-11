@@ -62,6 +62,7 @@ namespace Phoenix.Bot.Bots
             CancellationToken canTkn = default)
         {
             var userData = await _userDataAcsr.GetAsync(turnCtx, () => new(), canTkn);
+            var convData = await _convDataAcsr.GetAsync(turnCtx, () => new(), canTkn);
 
             // Check if school connection exists and is active
             var schoolConnection = await _schoolConnectionRepository.FindUniqueAsync(
@@ -79,21 +80,25 @@ namespace Phoenix.Bot.Bots
                 return;
             }
 
-            userData.School = schoolConnection.Tenant;
+            convData.School = schoolConnection.Tenant;
+            await _convDataAcsr.SetAsync(turnCtx, convData, canTkn);
 
             // Check if a user is connected and if their connection is active
             var userConnection = await _userConnectionRepository.FindUniqueAsync(
                 turnCtx.GetProvider(), turnCtx.GetProviderKey(), canTkn);
 
-            userData.IsConnected = userConnection is not null && userConnection.ActivatedAt.HasValue;
+            await userData.RefreshAsync(userConnection, _userManager);
 
             if (userData.IsConnected)
             {
-                userData.AppUser = await _userManager.FindByIdAsync(userConnection!.TenantId.ToString());
-                userData.PhoenixUser = userConnection.Tenant;
+                var userRoles = await _userManager.GetRoleRanksAsync(userData.AppUser!);
+                if (!userData.PhoenixUser!.Schools.Contains(convData.School) && !userRoles.Any(rr => rr.IsSuper()))
+                {
+                    await turnCtx.SendActivityAsync("Δεν έχετε πρόσβαση στο κέντρο που προσπαθείτε να εισέλθετε.");
 
-                var userRoles = await _userManager.GetRoleRanksAsync(userData.AppUser);
-                userData.IsBackend = userRoles.Any(rr => rr.IsBackend());
+                    userData.IsConnected = false;
+                    return;
+                }
 
                 if (userData.SelectedRole.HasValue && !userRoles.Contains(userData.SelectedRole.Value))
                 {
