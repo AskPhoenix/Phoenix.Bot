@@ -26,8 +26,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             _accessDataAcsr = userState.CreateProperty<AccessData>(nameof(AccessData));
             _otcRepository = new(phoenixContext);
 
-            AddDialog(new TextPrompt(PromptNames.VerificationCode, PromptValidators.VerificationCodePromptValidator));
-            AddDialog(new TextPrompt(PromptNames.IdentificationCode, PromptValidators.IdentificationCodePromptValidator));
+            AddDialog(new TextPrompt(PromptNames.Code, PromptValidators.CodePromptValidator));
 
             AddDialog(new WaterfallDialog(WaterfallNames.Auth.Verification.Top,
                 new WaterfallStep[]
@@ -47,22 +46,25 @@ namespace Phoenix.Bot.Dialogs.Auth
         {
             var options = (AuthenticationOptions)stepCtx.Options;
 
+            string prompt, reprompt;
             if (options.IsOwnerAuthentication)
-                return await stepCtx.PromptAsync(
-                    PromptNames.VerificationCode,
-                    new PromptOptions
-                    {
-                        Prompt = MessageFactory.Text("Ωραία! Παρακαλώ πληκτρολόγησε τον κωδικό που έλαβες με SMS παρακάτω:"),
-                        RetryPrompt = MessageFactory.Text("Η μορφή του κωδικού που πληκτρολόγησες δεν είναι έγκυρη. Παρακαλώ πληκτρολόγησέ τον ξανά:")
-                    }, canTkn);
+            {
+                prompt = "Ωραία! Παρακαλώ πληκτρολόγησε τον κωδικό που έλαβες με SMS παρακάτω:";
+                reprompt = "Η μορφή του κωδικού που πληκτρολόγησες δεν είναι έγκυρη. Παρακαλώ πληκτρολόγησέ τον ξανά:";
+            }
+            else
+            {
+                prompt = "Ζήτησε από τον γονέα σου να σου δώσει τον κωδικό " +
+                    "επαλήθευσής σου (κατηγορία «🗝 Πρόσβαση») και έπειτα πληκτρολόγησέ τον παρακάτω:";
+                reprompt = "Η μορφή του κωδικού που πληκτρολόγησες δεν είναι έγκυρη. Παρακαλώ πληκτρολόγησέ τον ξανά:";
+            }
 
             return await stepCtx.PromptAsync(
-                PromptNames.IdentificationCode,
+                PromptNames.Code,
                 new PromptOptions 
                 {
-                    Prompt = MessageFactory.Text("Ζήτησε από τον γονέα σου να σου δώσει τον κωδικό " +
-                        "επαλήθευσής σου (κατηγορία «🗝 Πρόσβαση») και έπειτα πληκτρολόγησέ τον παρακάτω:"),
-                    RetryPrompt = MessageFactory.Text("Η μορφή του κωδικού που πληκτρολόγησες δεν είναι έγκυρη. Παρακαλώ πληκτρολόγησέ τον ξανά:")
+                    Prompt = MessageFactory.Text(prompt),
+                    RetryPrompt = MessageFactory.Text(reprompt)
                 }, canTkn);
         }
 

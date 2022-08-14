@@ -238,7 +238,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             OneTimeCode otc = new()
             {
                 Purpose = OneTimeCodePurpose.Verification,
-                Token = CodeGenHelper.GenerateVerificationCode().ToString(),
+                Token = CodeGenHelper.GenerateCode(6).ToString(),
                 UserId = options.PhoneOwnerId,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5)
             };
