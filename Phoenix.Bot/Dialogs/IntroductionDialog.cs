@@ -6,7 +6,9 @@ using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.Bot.Dialogs.Auth;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.State.Options;
+using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 
@@ -52,11 +54,11 @@ namespace Phoenix.Bot.Dialogs
             {
                 Title = CData.School.Name,
                 Text = "Πάτησε ή πληκτρολόγησε \"Σύνδεση\" για να ξεκινήσουμε!",
-                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://www.askphoenix.gr"),
+                Tap = new(ActionTypes.OpenUrl, value: "https://www.askphoenix.gr"),
                 Buttons = new List<CardAction>
                 {
-                    new CardAction(ActionTypes.ImBack, title: "🔓 Σύνδεση", value: "🔓 Σύνδεση"),
-                    new CardAction(ActionTypes.OpenUrl, title: "🦜 Περισσότερα...", value: "https://www.askphoenix.gr")
+                    new(ActionTypes.ImBack, title: "🔓 Σύνδεση", value: "🔓 Σύνδεση"),
+                    new(ActionTypes.OpenUrl, title: "🦜 Περισσότερα...", value: "https://www.askphoenix.gr")
                 }
             };
 
@@ -67,7 +69,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = reply,
                     RetryPrompt = reply,
-                    Choices = new Choice[] { new Choice("🔓 Σύνδεση") },
+                    Choices = new Choice[] { new("🔓 Σύνδεση") },
                     Style = ListStyle.None
                 }, canTkn);
         }
@@ -79,12 +81,12 @@ namespace Phoenix.Bot.Dialogs
             {
                 Title = "Όροι Παροχής Υπηρεσιών",
                 Text = "Πριν ξεκινήσουμε θα πρέπει να διαβάσεις και να αποδεχθείς τους όρους χρήσης.",
-                Tap = new CardAction(ActionTypes.OpenUrl, value: "https://bot.askphoenix.gr/legal/terms-conditions.html"),
+                Tap = new(ActionTypes.OpenUrl, value: "https://bot.askphoenix.gr/legal/terms-conditions.html"),
                 Buttons = new List<CardAction>
                 {
-                    new CardAction(ActionTypes.ImBack, title: "✔️ Συμφωνώ", value: "✔️ Συμφωνώ"),
-                    new CardAction(ActionTypes.ImBack, title: "❌ Διαφωνώ", value: "❌ Διαφωνώ"),
-                    new CardAction(ActionTypes.OpenUrl, title: "📖 Ανάγνωση...", value: "https://bot.askphoenix.gr/legal/terms-conditions.html")
+                    new(ActionTypes.ImBack, title: "✔️ Συμφωνώ", value: "✔️ Συμφωνώ"),
+                    new(ActionTypes.ImBack, title: "❌ Διαφωνώ", value: "❌ Διαφωνώ"),
+                    new(ActionTypes.OpenUrl, title: "📖 Ανάγνωση...", value: "https://bot.askphoenix.gr/legal/terms-conditions.html")
                 }
             };
 
@@ -95,7 +97,7 @@ namespace Phoenix.Bot.Dialogs
                 {
                     Prompt = reply,
                     RetryPrompt = reply,
-                    Choices = new Choice[] { new Choice("✔️ Συμφωνώ"), new Choice("❌ Διαφωνώ") },
+                    Choices = new Choice[] { new("✔️ Συμφωνώ"), new("❌ Διαφωνώ") },
                     Style = ListStyle.None
                 }, canTkn);
         }
@@ -106,11 +108,8 @@ namespace Phoenix.Bot.Dialogs
             var foundChoice = (FoundChoice)stepCtx.Result;
 
             if (foundChoice.Index == 1)
-            {
-                await stepCtx.Context.SendActivityAsync("Θα πρέπει πρώτα να αποδεχθείς τους όρους χρήσης για να ξεκινήσουμε.");
-                return await stepCtx.EndDialogAsync(false, canTkn);
-            }
-                
+                throw new BotException(BotError.UserNotAcceptedTerms);
+               
             await stepCtx.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             return await stepCtx.BeginDialogAsync(
                 nameof(AuthenticationDialog), new AuthenticationOptions(), canTkn);

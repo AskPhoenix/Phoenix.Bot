@@ -2,6 +2,7 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Identity;
@@ -73,11 +74,7 @@ namespace Phoenix.Bot.Dialogs.Auth
 
             var phoneOwner = await _userRepository.FindPrimaryAsync(options.PhoneOwnerId, canTkn);
             if (phoneOwner is null)
-                return await ExitAsync(
-                    message: "Το τηλέφωνο δεν αντιστοιχεί σε κάποιον χρήστη πλέον.",
-                    solution: "Παρακαλώ προσπαθήστε ξανά.",
-                    error: 0,
-                    stepCtx, canTkn);
+                throw new BotException(BotError.UserNotValid);
 
             var otcs = options.IsOwnerAuthentication
                 ? phoneOwner.OneTimeCodes
@@ -94,12 +91,14 @@ namespace Phoenix.Bot.Dialogs.Auth
 
                 if (!matchingOtcs.Any())
                 {
-                    await stepCtx.Context.SendActivityAsync("Ο κωδικός που έγραψες δεν είναι έγκυρος.");
+                    await stepCtx.Context.SendActivityAsync("Ο κωδικός που έγραψες δεν είναι έγκυρος.",
+                        cancellationToken: canTkn);
 
                     return await stepCtx.NextAsync(null, canTkn);
                 }
 
-                await stepCtx.Context.SendActivityAsync("Ο κωδικός που έγραψες έχει λήξει.");
+                await stepCtx.Context.SendActivityAsync("Ο κωδικός που έγραψες έχει λήξει.",
+                    cancellationToken: canTkn);
 
                 if (options.IsOwnerAuthentication)
                     return await stepCtx.EndDialogAsync(null, canTkn);
@@ -112,7 +111,8 @@ namespace Phoenix.Bot.Dialogs.Auth
             await _otcRepository.DeleteAsync(validOtc);
             await _accessDataAcsr.DeleteAsync(stepCtx.Context, canTkn);
             
-            await stepCtx.Context.SendActivityAsync("Πολύ ωραία! Η σύνδεση ολοκληρώθηκε επιτυχώς! 😁");
+            await stepCtx.Context.SendActivityAsync("Πολύ ωραία! Η σύνδεση ολοκληρώθηκε επιτυχώς! 😁",
+                cancellationToken: canTkn);
 
             return await stepCtx.EndDialogAsync(validOtc.UserId, canTkn);
         }
@@ -124,17 +124,13 @@ namespace Phoenix.Bot.Dialogs.Auth
 
             if (accessData.AccessFailedCount <= AccessLimitations.MaxFails)
             {
-                await stepCtx.Context.SendActivityAsync("Ας προσπαθήσουμε ξανά!");
+                await stepCtx.Context.SendActivityAsync("Ας προσπαθήσουμε ξανά!", cancellationToken: canTkn);
 
                 return await stepCtx.ReplaceDialogAsync(
                     WaterfallNames.Auth.Verification.Top, stepCtx.Options, canTkn);
             }
 
-            return await ExitAsync(
-                message: "Δυστυχώς έχεις υπερβεί το όριο αποτυχημένων προσπαθειών επαλήθευσης.",
-                solution: "Παρακαλώ επικοινώνησε με το κέντρο για την επίλυση του προβλήματος.",
-                error: 0,
-                stepCtx, canTkn);
+            throw new BotException(BotError.AuthMaxFails);
         }
 
         #endregion

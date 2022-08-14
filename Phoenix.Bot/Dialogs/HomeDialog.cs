@@ -6,8 +6,10 @@ using Phoenix.Bot.Dialogs.Actions.Preparation;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
+using Phoenix.Bot.Utilities.State.Options.Actions.Preparation;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 
@@ -66,8 +68,9 @@ namespace Phoenix.Bot.Dialogs
             if (options.Action != BotAction.NoAction)
                 return await stepCtx.NextAsync(null, canTkn);
 
-            var choices = BotActionHelper.GetActionChoices(
-                UData.SelectedRole!.Value, removePendingActions: true);
+            var menuActions = BotActionExtensions.FindMenuActions(UData.SelectedRole!.Value);
+            var choices = ChoiceFactory.ToChoices(
+                menuActions.Select(a => a.ToFriendlyString(addEmoji: true)).ToList());
 
             return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
@@ -86,7 +89,7 @@ namespace Phoenix.Bot.Dialogs
         {
             var options = (HomeOptions)stepCtx.Options;
             var userRole = UData.SelectedRole!.Value;
-            var actions = BotActionHelper.GetMenuActions(userRole, removePendingActions: true);
+            var actions = BotActionExtensions.FindMenuActions(userRole);
 
             if (stepCtx.Result is FoundChoice foundChoice)
                 options.Action = actions.ElementAt(foundChoice.Index);
@@ -94,11 +97,13 @@ namespace Phoenix.Bot.Dialogs
             bool isValidAction = actions.Contains(options.Action) || options.Action.IsNonMenuAction();
             if (!isValidAction)
             {
-                await stepCtx.Context.SendActivityAsync("Δεν έχεις πρόσβαση στη δυνατότητα που προσπαθείς να εισέλθεις. Παρακαλώ επίλεξε μία έγκυρη.");
+                await stepCtx.Context.SendActivityAsync(BotError.ActionForbidden.GetMessage(),
+                    cancellationToken: canTkn);
+
                 return await stepCtx.EndDialogAsync(null, canTkn);
             }
 
-            var preparations = BotActionPreparationHelper.GetPreparations(options.Action, userRole);
+            var preparations = options.Action.FindPreparations(userRole);
             var preparationOptions = new PreparationOptions(preparations);
 
             return await stepCtx.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, canTkn);
@@ -158,7 +163,8 @@ namespace Phoenix.Bot.Dialogs
                 case BotAction.NoAction:
                 
                 default:
-                    await stepCtx.Context.SendActivityAsync("Η ενέργεια που ζητήσατε δεν είναι διαθέσιμη προς το παρόν.");
+                    await stepCtx.Context.SendActivityAsync(BotError.ActionNotAvailable.GetMessage(),
+                        cancellationToken: canTkn);
                     return await stepCtx.EndDialogAsync(null, canTkn);
             }
         }

@@ -10,7 +10,6 @@ using Phoenix.Bot.Dialogs.Auth;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Senders;
-using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,11 +66,11 @@ builder.Services.AddScoped<VerificationDialog>();
 
 // Preparation
 builder.Services.AddScoped<PreparationDialog>();
-builder.Services.AddScoped<AffiliatedUserPreparationComponent>();
-builder.Services.AddScoped<CoursePreparationComponent>();
-builder.Services.AddScoped<GroupPreparationComponent>();
-builder.Services.AddScoped<DatePreparationComponent>();
-builder.Services.AddScoped<LecturePreparationComponent>();
+builder.Services.AddScoped<AffiliatedUserPreparation>();
+builder.Services.AddScoped<CoursePreparation>();
+builder.Services.AddScoped<GroupPreparation>();
+builder.Services.AddScoped<DatePreparation>();
+builder.Services.AddScoped<LecturePreparation>();
 
 // Actions
 builder.Services.AddScoped<AssignmentsDialog>();
@@ -105,9 +104,6 @@ builder.Services.AddScoped(_ =>
 
 
 var app = builder.Build();
-
-// TODO: Load culture from School Settings
-CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("el-GR");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

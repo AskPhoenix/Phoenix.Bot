@@ -3,6 +3,8 @@ using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Helpers;
+using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.DataHandle.Identity;
@@ -69,16 +71,10 @@ namespace Phoenix.Bot.Bots
                 turnCtx.GetProvider(), turnCtx.GetRecipientKey(), canTkn);
 
             if (schoolConnection is null)
-            {
-                await turnCtx.SendActivityAsync("Δε βρέθηκε συσχετισμένο κέντρο με την τρέχουσα σελίδα.");
-                return;
-            }
+                throw new BotException(BotError.SchoolNotFound);
 
             if (!schoolConnection.ActivatedAt.HasValue)
-            {
-                await turnCtx.SendActivityAsync("Η συνδρομή του κέντρου δεν είναι ενεργή.");
-                return;
-            }
+                throw new BotException(BotError.SchoolNotConnected);
 
             convData.School = schoolConnection.Tenant;
             await _convDataAcsr.SetAsync(turnCtx, convData, canTkn);
@@ -94,10 +90,9 @@ namespace Phoenix.Bot.Bots
                 var userRoles = await _userManager.GetRoleRanksAsync(userData.AppUser!);
                 if (!userData.PhoenixUser!.Schools.Contains(convData.School) && !userRoles.Any(rr => rr.IsSuper()))
                 {
-                    await turnCtx.SendActivityAsync("Δεν έχετε πρόσβαση στο κέντρο που προσπαθείτε να εισέλθετε.");
-
                     userData.IsConnected = false;
-                    return;
+
+                    throw new BotException(BotError.UserNotSubscribedToSchool);
                 }
 
                 if (userData.SelectedRole.HasValue && !userRoles.Contains(userData.SelectedRole.Value))
@@ -146,6 +141,7 @@ namespace Phoenix.Bot.Bots
 
             // Set threads locale
             // TODO: Check which to keep
+            
             //Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture(convData.Locale);
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.CreateSpecificCulture(convData.Locale!);
 
@@ -156,13 +152,7 @@ namespace Phoenix.Bot.Bots
         private async Task<Command> HandleCommandAsync(ITurnContext<IMessageActivity> turnCtx,
             CancellationToken canTkn = default)
         {
-            string mess = turnCtx.Activity.Text;
-            Command cmd;
-
-            if (CommandHandle.IsCommand(mess))
-                CommandHandle.TryGetCommand(mess, out cmd);
-            else
-                CommandHandle.TryInferCommand(mess, out cmd);
+            Command cmd = turnCtx.Activity.Text.InferCommand();
 
             if (cmd != Command.NoCommand)
             {
@@ -191,7 +181,7 @@ namespace Phoenix.Bot.Bots
 
         private async Task GreetAsync(ITurnContext<IMessageActivity> turnCtx)
         {
-            var gifUrl = await DialogsHelper.CreateGifUrlAsync(
+            var gifUrl = await DialogsHelper.FindGifUrlAsync(
                             "g", "hi", 10, new Random().Next(10), _configuration["GiphyKey"]);
 
             var reply = MessageFactory.ContentUrl(

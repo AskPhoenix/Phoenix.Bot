@@ -2,7 +2,10 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.Bot.Utilities.Dialogs.Helpers;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Dialogs.Prompts.Options;
+using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.State;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Identity;
@@ -86,13 +89,13 @@ namespace Phoenix.Bot.Dialogs.Auth
             CancellationToken canTkn)
         {
             if (stepCtx.Result is not int verifiedUserId)
-                return await stepCtx.EndDialogAsync(false, canTkn);
+                throw new BotException(BotError.AuthFailed);
 
             var appVerifiedUser = await _userManager.FindByIdAsync(verifiedUserId.ToString());
             var verifiedUser = await _userRepository.FindPrimaryAsync(verifiedUserId);
 
             if (verifiedUser is null || appVerifiedUser is null)
-                return await stepCtx.EndDialogAsync(false, canTkn);
+                throw new BotException(BotError.UserNotValid);
 
             verifiedUser.HasAcceptedTerms = true;
             await _userRepository.UpdateAsync(verifiedUser);
@@ -112,7 +115,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             {
                 if (!await _userManager.HasPasswordAsync(appVerifiedUser))
                 {
-                    string pass = DialogsHelper.GeneratePasscode(8);
+                    string pass = CodeGenHelper.GeneratePassCode(8);
                     await _userManager.AddPasswordAsync(appVerifiedUser, pass);
 
                     var accessData = await _accessDataAcsr.GetAsync(stepCtx.Context, () => new(), canTkn);
@@ -162,9 +165,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             int userId = int.Parse(await _userManager.GetUserIdAsync(appPhoneOwner));
             options.PhoneOwnerId = userId;
 
-            var phoneOwner = await _userRepository.FindPrimaryAsync(userId);
-            if (phoneOwner is null)
-                return await ExitAsync(stepCtx, canTkn);
+            var phoneOwner = (await _userRepository.FindPrimaryAsync(userId))!;
 
             var userRoles = await _userManager.GetRoleRanksAsync(appPhoneOwner);
 
@@ -225,12 +226,8 @@ namespace Phoenix.Bot.Dialogs.Auth
             if (accessData.SMSFailedCount < AccessLimitations.MaxFails ||
                 accessData.AccessFailedCount < AccessLimitations.MaxFails)
                 return await stepCtx.NextAsync(null, canTkn);
-                
-            return await ExitAsync(
-                message: "Δυστυχώς έχεις υπερβεί το όριο αποτυχημένων προσπαθειών επαλήθευσης.",
-                solution: "Παρακαλώ επικοινώνησε με το κέντρο για την επίλυση του προβλήματος.",
-                error: 0,
-                stepCtx, canTkn);
+
+            throw new BotException(BotError.AuthMaxFails);
         }
 
         private async Task<DialogTurnResult> SendCodeStepAsync(WaterfallStepContext stepCtx,
@@ -241,7 +238,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             OneTimeCode otc = new()
             {
                 Purpose = OneTimeCodePurpose.Verification,
-                Token = DialogsHelper.GenerateVerificationCode().ToString(),
+                Token = CodeGenHelper.GenerateVerificationCode().ToString(),
                 UserId = options.PhoneOwnerId,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5)
             };

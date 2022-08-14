@@ -4,6 +4,8 @@ using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Errors;
+using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
@@ -82,15 +84,11 @@ namespace Phoenix.Bot.Dialogs
         {
             // TODO: Check that lazy loader works here
             if (UData.SelectedRole == RoleRank.Parent && !UData.PhoenixUser!.Children.Any())
-                return await ExitAsync(
-                    message: "Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.",
-                    solution: "Παρακαλώ επικοινωνήστε με το κέντρο σας για την επίλυση του προβλήματος.",
-                    error: 2,
-                    stepCtx, canTkn);
+                throw new BotException(BotError.ParentHasNoAffiliations);
 
-            HomeOptions homeOptions = new() 
+            HomeOptions homeOptions = new()
             {
-                Action = BotActionExtensions.FindFromCommand(CData.Command)
+                Action = CData.Command.ToBotAction()
             };
 
             return await stepCtx.BeginDialogAsync(nameof(HomeDialog), homeOptions, canTkn);
@@ -117,11 +115,7 @@ namespace Phoenix.Bot.Dialogs
                     && userRoles.Any(rr => rr.IsStaff()) && userRoles.Contains(RoleRank.Parent));
 
             if (!areValid)
-                return await ExitAsync(
-                    message: "Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου.",
-                    solution: "Παρακαλώ επικοινώνησε με το κέντρο για την απίλυση του προβλήματος.",
-                    error: 3,
-                    stepCtx, canTkn);
+                throw new BotException(BotError.RoleNotValid);
 
             if (UData.IsBackend)
             {
