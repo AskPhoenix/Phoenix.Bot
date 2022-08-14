@@ -125,16 +125,17 @@ namespace Phoenix.Bot.Bots
             convData.Command = await HandleCommandAsync(turnCtx, canTkn);
 
             // Determine locale
+            string locale;
             if (schoolConnection is null || userData.IsBackend)
-                convData.Locale = "en-US";
+                locale = "en-US";
             else
             {
                 if (userData.SelectedRole.HasValue)
-                    convData.Locale = userData.SelectedRole.Value == RoleRank.Parent
+                    locale = userData.SelectedRole.Value == RoleRank.Parent
                         ? schoolConnection.Tenant.SchoolSetting.SecondaryLocale
                         : schoolConnection.Tenant.SchoolSetting.PrimaryLocale;
                 else
-                    convData.Locale = schoolConnection.Tenant.SchoolSetting.PrimaryLocale;
+                    locale = schoolConnection.Tenant.SchoolSetting.PrimaryLocale;
             }
 
             await _convDataAcsr.SetAsync(turnCtx, convData, canTkn);
@@ -142,8 +143,8 @@ namespace Phoenix.Bot.Bots
             // Set threads locale
             // TODO: Check which to keep
             
-            //Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture(convData.Locale);
-            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.CreateSpecificCulture(convData.Locale!);
+            //Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture(locale);
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.CreateSpecificCulture(locale!);
 
             // Run Main Dialog
             await Dialog.RunAsync(turnCtx, _convState.CreateProperty<DialogState>(nameof(DialogState)), canTkn);
