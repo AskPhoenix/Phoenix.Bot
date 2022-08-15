@@ -77,7 +77,7 @@ builder.Services.AddScoped<AssignmentsDialog>();
 builder.Services.AddScoped<ScheduleDialog>();
 builder.Services.AddScoped<GradesDialog>();
 builder.Services.AddScoped<AccessDialog>();
-builder.Services.AddScoped<AssignmentsManagementDialog>();
+builder.Services.AddScoped<TeacherExtensionDialog>();
 builder.Services.AddScoped<BroadcastDialog>();
 builder.Services.AddScoped<HelpDialog>();
 builder.Services.AddScoped<FeedbackDialog>();

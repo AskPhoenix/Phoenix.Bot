@@ -26,7 +26,7 @@ namespace Phoenix.Bot.Dialogs
             PreparationDialog preparationDialog,
             AccessDialog accessDialog,
             AssignmentsDialog assignmentsDialog,
-            AssignmentsManagementDialog assignmentsManagementDialog,
+            TeacherExtensionDialog assignmentsManagementDialog,
             BroadcastDialog broadcastDialog,
             GradesDialog gradesDialog,
             ScheduleDialog scheduleDialog,
@@ -145,7 +145,7 @@ namespace Phoenix.Bot.Dialogs
                 case BotAction.Exercises:
                 case BotAction.Exams:
                     AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, options.Action);
-                    return await stepCtx.BeginDialogAsync(nameof(AssignmentsManagementDialog), assignmentsManagementOptions, canTkn);
+                    return await stepCtx.BeginDialogAsync(nameof(TeacherExtensionDialog), assignmentsManagementOptions, canTkn);
                 
                 case BotAction.Broadcast:
                     return await stepCtx.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, canTkn);

@@ -28,7 +28,7 @@
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.17.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.*" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.43" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.*" />
     <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.122" />
     <PackageReference Include="Phoenix.Language" Version="3.0.0-alpha.8" />
   </ItemGroup>

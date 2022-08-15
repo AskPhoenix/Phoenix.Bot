@@ -244,7 +244,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             };
             otc = await _otcRepository.CreateAsync(otc);
 
-            if (options.Phone.StartsWith("690000000"))
+            if (options.Phone.StartsWith("69000000"))
                 await stepCtx.Context.SendActivityAsync(otc.Token, cancellationToken: canTkn);
             else
                 await _smsSender.SendAsync(options.Phone,

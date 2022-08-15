@@ -40,12 +40,7 @@ namespace Phoenix.Bot.Dialogs.Actions
         private async Task<DialogTurnResult> AffiliatedUsersStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
-            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
-            {
-                BackgroundImage = new(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-            };
-            
-            card.Body.AddRange(new AdaptiveTextBlockHeaderLight[] 
+            var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
             {
                 new("Κωδικοί επαλήθευσης"),
                 new("Ισχύουν για τα επόμενα 5 λεπτά και είναι μοναδικοί ανά χρήστη")
