@@ -1,14 +1,11 @@
 using Bot.Builder.Community.Storage.EntityFramework;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Bot.Builder;
 using Microsoft.EntityFrameworkCore;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.Bot.Dialogs.Actions.Preparation;
 using Phoenix.Bot.Dialogs.Auth;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Senders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,7 +58,6 @@ builder.Services.AddScoped<HomeDialog>();
 
 // Authentication
 builder.Services.AddScoped<AuthenticationDialog>();
-builder.Services.AddScoped<CredentialsDialog>();
 builder.Services.AddScoped<VerificationDialog>();
 
 // Preparation

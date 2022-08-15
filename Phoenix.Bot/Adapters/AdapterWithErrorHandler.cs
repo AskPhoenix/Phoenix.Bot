@@ -1,10 +1,7 @@
 ﻿using Bot.Builder.Community.Storage.EntityFramework;
-using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Builder.TraceExtensions;
 using Microsoft.Bot.Connector.Authentication;
-using Phoenix.Bot.Utilities.Errors;
-using Phoenix.DataHandle.Main.Types;
 using Phoenix.Language.Bot.Types.BotError;
 
 namespace Phoenix.Bot.Adapters

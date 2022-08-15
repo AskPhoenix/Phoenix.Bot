@@ -1,17 +1,8 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Dialogs.Actions;
+﻿using Phoenix.Bot.Dialogs.Actions;
 using Phoenix.Bot.Dialogs.Actions.Preparation;
 using Phoenix.Bot.Utilities.Actions;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Errors;
-using Phoenix.Bot.Utilities.State.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.Bot.Utilities.State.Options.Actions.Preparation;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
 
 namespace Phoenix.Bot.Dialogs
 {
@@ -144,8 +135,8 @@ namespace Phoenix.Bot.Dialogs
 
                 case BotAction.Exercises:
                 case BotAction.Exams:
-                    AssignmentsManagementOptions assignmentsManagementOptions = new(actionOptions, options.Action);
-                    return await stepCtx.BeginDialogAsync(nameof(TeacherExtensionDialog), assignmentsManagementOptions, canTkn);
+                    TeacherExtensionOptions teacherExtensionOptions = new(actionOptions, options.Action);
+                    return await stepCtx.BeginDialogAsync(nameof(TeacherExtensionDialog), teacherExtensionOptions, canTkn);
                 
                 case BotAction.Broadcast:
                     return await stepCtx.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, canTkn);

@@ -1,18 +1,4 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Helpers;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Dialogs.Prompts.Options;
-using Phoenix.Bot.Utilities.Errors;
-using Phoenix.Bot.Utilities.State;
-using Phoenix.Bot.Utilities.State.Options;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Main.Types;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.DataHandle.Senders;
+﻿using Phoenix.DataHandle.Senders;
 
 namespace Phoenix.Bot.Dialogs.Auth
 {

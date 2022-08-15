@@ -1,15 +1,8 @@
 ﻿using AdaptiveCards;
-using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.DataHandle.Utilities;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {

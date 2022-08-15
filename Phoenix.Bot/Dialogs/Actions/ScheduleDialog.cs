@@ -1,17 +1,7 @@
 ﻿using AdaptiveCards;
-using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Dialogs.Prompts.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.DataHandle.Utilities;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {

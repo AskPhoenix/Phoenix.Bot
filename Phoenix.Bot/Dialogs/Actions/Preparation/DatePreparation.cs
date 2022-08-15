@@ -1,17 +1,7 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
-using Microsoft.Bot.Schema;
+﻿using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Actions;
-using Phoenix.Bot.Utilities.Dialogs.Helpers;
-using Phoenix.Bot.Utilities.Errors;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.State.Options.Actions.Preparation;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Main.Types;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.DataHandle.Utilities;
 
 namespace Phoenix.Bot.Dialogs.Actions.Preparation
 {

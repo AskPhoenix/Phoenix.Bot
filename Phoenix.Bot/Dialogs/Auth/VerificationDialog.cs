@@ -1,15 +1,4 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Errors;
-using Phoenix.Bot.Utilities.State;
-using Phoenix.Bot.Utilities.State.Options;
-using Phoenix.DataHandle.Identity;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-
-namespace Phoenix.Bot.Dialogs.Auth
+﻿namespace Phoenix.Bot.Dialogs.Auth
 {
     public class VerificationDialog : StateDialog
     {
