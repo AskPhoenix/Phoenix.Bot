@@ -2,39 +2,36 @@
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
-using Microsoft.Bot.Schema;
-using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs.Prompts;
+using Phoenix.Bot.Utilities.Dialogs.Prompts.Options;
 using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Main;
+using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
 using Phoenix.DataHandle.Repositories;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using Phoenix.DataHandle.Utilities;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
-    public class ScheduleDialog : ComponentDialog
+    public class ScheduleDialog : StateDialog
     {
-        private readonly CourseRepository courseRepository;
-        private readonly LectureRepository lectureRepository;
+        private readonly CourseRepository _courseRepository;
+        private readonly LectureRepository _lectureRepository;
 
-        public ScheduleDialog(PhoenixContext phoenixContext)
-            : base(nameof(ScheduleDialog))
+        public ScheduleDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext)
+            : base(userState, convState, userManager, phoenixContext, nameof(ScheduleDialog))
         {
-            this.courseRepository = new(phoenixContext);
-            this.lectureRepository = new(phoenixContext);
-            this.lectureRepository.Include(l => l.Course);
-            this.lectureRepository.Include(l => l.Classroom);
+            _courseRepository = new(phoenixContext, nonObviatedOnly: true);
+            _lectureRepository = new(phoenixContext, nonObviatedOnly: true);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new DateTimePrompt(nameof(DateTimePrompt)));
-
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Schedule.Weekly,
                 new WaterfallStep[]
@@ -53,89 +50,102 @@ namespace Phoenix.Bot.Dialogs.Actions
             InitialDialogId = WaterfallNames.Actions.Schedule.Weekly;
         }
 
-        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
+        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options,
+            CancellationToken canTkn = default)
         {
-            var scheduleOptions = options as ScheduleOptions;
+            var scheduleOptions = (ScheduleOptions)options;
+
             if (scheduleOptions.Daily)
                 InitialDialogId = WaterfallNames.Actions.Schedule.Daily;
 
-            return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
+            return base.OnBeginDialogAsync(innerDc, options, canTkn);
         }
 
         #region Weekly Waterfall Dialog
 
-        //TODO: Use CalendarExtensions.GetWeekOfYearISO8601 like in LectureService of DataHandle
-        private async Task<DialogTurnResult> WeeklyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> WeeklyStepAsync(WaterfallStepContext steCtx,
+            CancellationToken canTkn)
         {
-            var scheduleOptions = stepContext.Options as ScheduleOptions;
-            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRole == Role.Teacher).Select(c => c.Id).ToArray();
-            DateTime closestDate = lectureRepository.FindClosestLectureDates(courseIds, Tense.Future, dayRange: 1).SingleOrDefault();
-            
-            //This error occurs only when there are no Lectures, which should not be the case.
-            //Lectures are created when a School is enrolled and are updated regularly afterwards.
-            if (closestDate == default)
-            {
-                await stepContext.Context.SendActivityAsync("Δεν έχουν προγραμματιστεί ακόμα τα μαθήματα.");
-                return await stepContext.EndDialogAsync(null, cancellationToken);
-            }
+            var options = (ScheduleOptions)steCtx.Options;
 
-            DateTime monday = closestDate.AddDays(-(int)closestDate.DayOfWeek);
+            var today = CalendarExtensions.TimeZoneNow(CData.School.SchoolSetting.TimeZone).Date;
+            var monday = today.AddDays(-(int)today.DayOfWeek);
 
-            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
+            var courseIds = UData.PhoenixUser!.Courses.Select(c => c.Id).ToArray();
+
+            var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
             {
-                BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-            };
-            card.Body.Add(new AdaptiveTextBlockHeaderLight("Εβδομαδιαίο πρόγραμμα"));
-            card.Body.Add(new AdaptiveTextBlockHeaderLight($"{monday:d/M} έως {monday.AddDays(6):d/M}"));
+                new("Εβδομαδιαίο πρόγραμμα"),
+                new($"{monday:d/M} έως {monday.AddDays(6):d/M}")
+            });
+
+            bool weekHasLectures = false;
 
             for (int i = 0; i < 6; i++)
             {
-                DateTime nextDay = monday.AddDays(i);
-                var dayLectures = lectureRepository.FindMany(courseIds, nextDay);
+                var nextDay = monday.AddDays(i).Date;
+                var dayLectures = _lectureRepository.Search(courseIds, nextDay);
 
                 if (dayLectures.Any())
                 {
+                    weekHasLectures = true;
+
                     card.Body.Add(new AdaptiveTextBlockHeaderLight(nextDay.ToString("dddd")));
+
                     foreach (var lec in dayLectures)
-                    {
-                        card.Body.Add(new AdaptiveRichFactSetLight("Μάθημα ", lec.Course.NameWithSubcourse));
-                        card.Body.Add(new AdaptiveRichFactSetLight("Ώρες ", $"{lec.StartDateTime:t} - {lec.EndDateTime:t}", separator: true));
-                        card.Body.Add(new AdaptiveRichFactSetLight());
-                    }
+                        card.Body.AddRange(new AdaptiveRichFactSetLight[]
+                        {
+                            new("Μάθημα ", lec.Course.GetNameWithSubcourse()),
+                            new("Ώρες ", $"{lec.StartDateTime:t} - {lec.EndDateTime:t}", separator: true),
+                            new()
+                        });
                 }
             }
 
-            await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις το πρόγραμμα της τρέχουσας εβδομάδας:");
+            if (weekHasLectures)
+            {
+                await steCtx.Context.SendActivityAsync("Παρακάτω θα βρεις το πρόγραμμα της τρέχουσας εβδομάδας:");
+                await steCtx.Context.SendActivityAsync(card.ToActivity());
+            }
+            else
+                await steCtx.Context.SendActivityAsync($"Δεν έχουν προγραμματιστεί μαθήματα για την εβδομάδα {monday:d/M} έως {monday.AddDays(6):d/M}! 😎");
 
-            Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
-            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
-
-            return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt), new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα;"));
+            return await steCtx.PromptAsync(
+                nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα;"),
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> OtherDayStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> OtherDayStepAsync(WaterfallStepContext steCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Index == 0)
-                return await stepContext.EndDialogAsync(BotAction.ScheduleDaily, cancellationToken);
+            var foundChoice = (FoundChoice)steCtx.Result;
 
-            await stepContext.Context.SendActivityAsync("OK 😊");
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            if (foundChoice.Index == 0)
+                return await steCtx.EndDialogAsync(BotAction.ScheduleDay, canTkn);
+
+            await steCtx.Context.SendActivityAsync("OK 😊");
+
+            return await steCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Daily Waterfall Dialog
 
-        private async Task<DialogTurnResult> DailyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> DailyStepAsync(WaterfallStepContext steCtx,
+            CancellationToken canTkn)
         {
-            var scheduleOptions = stepContext.Options as ScheduleOptions;
-            DateTime date = scheduleOptions.DateToPrepareFor.Value.Date;
-            int[] courseIds = courseRepository.FindForUser(scheduleOptions.ActiveUserId, scheduleOptions.UserRole == Role.Teacher).Select(c => c.Id).ToArray();
-            var lectures = lectureRepository.FindMany(courseIds, date);
+            var scheduleOptions = (ScheduleOptions)steCtx.Options;
 
-            int dayOffset = (date - DateTime.UtcNow.Date).Days;
+            var date = scheduleOptions.DateToPrepareFor!.Value.Date;
+            var courseIds = UData.PhoenixUser!.Courses.Select(c => c.Id).ToArray();
+
+            var lectures = _lectureRepository.Search(courseIds, date);
+
+            var now = CalendarExtensions.TimeZoneNow(CData.School.SchoolSetting.TimeZone);
+            int dayOffset = (date - now.Date).Days;
+
             string dayName = dayOffset switch
             {
                 var o when o <= -2 && o > -7 => $"{(date.DayOfWeek == DayOfWeek.Saturday ? "το προηγούμενο" : "την προηγούμενη")} {date:dddd}",
@@ -146,34 +156,40 @@ namespace Phoenix.Bot.Dialogs.Actions
                 _ => $"τις {date:d/M}"
             };
 
-            if (!lectures.Any())
-                await stepContext.Context.SendActivityAsync($"Δεν {(dayOffset >= 0 ? "έχεις" : "είχες")} μαθήματα για {dayName}! 😎");
-            else
+            if (lectures.Any())
             {
-                var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
-                {
-                    BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-                };
+                var card = new AdaptivePhoenixCard();
                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"{date:D}"));
 
                 foreach (var lec in lectures)
                 {
-                    card.Body.Add(new AdaptiveTextBlockHeaderLight(lec.Course.NameWithSubcourse));
-                    card.Body.Add(new AdaptiveRichFactSetLight("Ώρες ", $"{lec.StartDateTime:t} - {lec.EndDateTime:t}"));
+                    card.Body.AddRange(new AdaptiveElement[]
+                    {
+                        new AdaptiveTextBlockHeaderLight(lec.Course.GetNameWithSubcourse()),
+                        new AdaptiveRichFactSetLight("Ώρες ", $"{lec.StartDateTime:t} - {lec.EndDateTime:t}")
+                    });
+
                     if (lec.Classroom != null)
                         card.Body.Add(new AdaptiveRichFactSetLight("Αίθουσα ", lec.Classroom.Name, separator: true));
-                    card.Body.Add(new AdaptiveRichFactSetLight("Κατάσταση ", lec.Status.ToGreekString(), separator: true));
-                    card.Body.Add(new AdaptiveRichFactSetLight("Σχόλια ", string.IsNullOrEmpty(lec.Info) ? "-" : lec.Info, separator: true));
+
+                    card.Body.AddRange(new AdaptiveRichFactSetLight[]
+                    {
+                        new("Κατάσταση ", lec.IsCancelled ? "Ακυρώθηκε" : "Προγραμματισμένη", separator: true),
+                        new("Σχόλια ", string.IsNullOrEmpty(lec.Comments) ? "-" : lec.Comments, separator: true)
+                    });
                 }
 
-                await stepContext.Context.SendActivityAsync($"Ορίστε το πρόγραμμα για {dayName}:");
+                await steCtx.Context.SendActivityAsync($"Ορίστε το πρόγραμμα για {dayName}:");
 
-                Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment));
+                await steCtx.Context.SendActivityAsync(card.ToActivity());
             }
+            else
+                await steCtx.Context.SendActivityAsync($"Δεν έχουν προγραμματιστεί μαθήματα για {dayName}! 😎");
 
-            return await stepContext.PromptAsync(
-                nameof(UnaccentedChoicePrompt), new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα;"));
+            return await steCtx.PromptAsync(
+                nameof(UnaccentedChoicePrompt),
+                new YesNoPromptOptions("Θα ήθελες να δεις το πρόγραμμα για άλλη ημέρα;"),
+                canTkn);
         }
 
         #endregion
