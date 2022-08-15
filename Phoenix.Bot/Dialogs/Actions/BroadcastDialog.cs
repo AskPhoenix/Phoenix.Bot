@@ -134,9 +134,9 @@ namespace Phoenix.Bot.Dialogs.Actions
 
             await _broadcastRepository.CreateAsync(broadcast);
 
-            //TODO: Create a BroadcastWrapper
             if (broadcast.Daypart == Daypart.Now)
             {
+                //TODO: Create a BroadcastWrapper
                 await httpClient.PostAsync(ProactiveBotUrl + $"broadcast/id/{broadcast.Id}", null);
                 await stepCtx.Context.SendActivityAsync("Η ανακοίνωση εστάλη επιτυχώς!");
             }
