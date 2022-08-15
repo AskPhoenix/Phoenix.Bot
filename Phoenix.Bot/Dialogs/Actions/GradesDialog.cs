@@ -9,8 +9,6 @@
             PhoenixContext phoenixContext)
             : base(userState, convState, userManager, phoenixContext, nameof(BroadcastDialog))
         {
-            throw new NotImplementedException();
-
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Grades.Top,
                 new WaterfallStep[]
                 {

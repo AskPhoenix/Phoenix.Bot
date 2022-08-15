@@ -1,6 +1,9 @@
 using Bot.Builder.Community.Storage.EntityFramework;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Bot.Builder.Integration.AspNet.Core;
+using Microsoft.Bot.Connector.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Phoenix.Bot.Adapters;
 using Phoenix.Bot.Bots;
 using Phoenix.Bot.Dialogs;
 using Phoenix.Bot.Dialogs.Actions;
@@ -10,14 +13,12 @@ using Phoenix.DataHandle.Senders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Web Host Defaults
-builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
-
 // Add services to the container
 
 builder.Services
     .AddHttpClient()
-    .AddControllers();
+    .AddControllers()
+    .AddNewtonsoftJson();
 
 #region DB Contexts
 
@@ -42,8 +43,20 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
 
 #endregion
 
-#region Bot State Services
+#region Bot Services
 
+builder.Services.AddSingleton<BotFrameworkAuthentication, ConfigurationBotFrameworkAuthentication>();
+builder.Services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
+
+builder.Services.AddTransient<IBot, DialogBot<MainDialog>>();
+
+// Bot State Stores
+builder.Services.AddSingleton<IStorage>(new EntityFrameworkStorage(
+    builder.Configuration.GetConnectionString("PhoenixConnection")));
+builder.Services.AddSingleton(new EntityFrameworkTranscriptStore(
+    builder.Configuration.GetConnectionString("PhoenixConnection")));
+
+// Bot State
 builder.Services.AddSingleton<UserState>();
 builder.Services.AddSingleton<ConversationState>();
 
@@ -77,12 +90,6 @@ builder.Services.AddScoped<TeacherExtensionDialog>();
 builder.Services.AddScoped<BroadcastDialog>();
 builder.Services.AddScoped<HelpDialog>();
 builder.Services.AddScoped<FeedbackDialog>();
-
-#endregion
-
-#region Bot Services
-
-builder.Services.AddTransient<IBot, DialogBot<MainDialog>>();
 
 #endregion
 

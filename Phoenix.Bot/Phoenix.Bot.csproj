@@ -24,6 +24,7 @@
     <PackageReference Include="AdaptiveCards" Version="2.7.*" />
     <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.13.*" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.*" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.17.*" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.17.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
@@ -34,23 +35,23 @@
   </ItemGroup>
 
   <ItemGroup>
-   <Using Include="Microsoft.Bot.Builder"/>
-   <Using Include="Microsoft.Bot.Builder.Dialogs"/>
-   <Using Include="Microsoft.Bot.Builder.Dialogs.Choices"/>
+   <Using Include="Microsoft.Bot.Builder" />
+   <Using Include="Microsoft.Bot.Builder.Dialogs" />
+   <Using Include="Microsoft.Bot.Builder.Dialogs.Choices" />
 
-   <Using Include="Phoenix.Bot.Utilities.Dialogs"/>
-   <Using Include="Phoenix.Bot.Utilities.Dialogs.Helpers"/>
-   <Using Include="Phoenix.Bot.Utilities.Dialogs.Prompts"/>
-   <Using Include="Phoenix.Bot.Utilities.Dialogs.Prompts.Options"/>
-   <Using Include="Phoenix.Bot.Utilities.Errors"/>
-   <Using Include="Phoenix.Bot.Utilities.State"/>
-   <Using Include="Phoenix.Bot.Utilities.State.Options"/>
+   <Using Include="Phoenix.Bot.Utilities.Dialogs" />
+   <Using Include="Phoenix.Bot.Utilities.Dialogs.Helpers" />
+   <Using Include="Phoenix.Bot.Utilities.Dialogs.Prompts" />
+   <Using Include="Phoenix.Bot.Utilities.Dialogs.Prompts.Options" />
+   <Using Include="Phoenix.Bot.Utilities.Errors" />
+   <Using Include="Phoenix.Bot.Utilities.State" />
+   <Using Include="Phoenix.Bot.Utilities.State.Options" />
 
-   <Using Include="Phoenix.DataHandle.Identity"/>
-   <Using Include="Phoenix.DataHandle.Main.Models"/>
-   <Using Include="Phoenix.DataHandle.Main.Types"/>
-   <Using Include="Phoenix.DataHandle.Repositories"/>
-   <Using Include="Phoenix.DataHandle.Utilities"/>
+   <Using Include="Phoenix.DataHandle.Identity" />
+   <Using Include="Phoenix.DataHandle.Main.Models" />
+   <Using Include="Phoenix.DataHandle.Main.Types" />
+   <Using Include="Phoenix.DataHandle.Repositories" />
+   <Using Include="Phoenix.DataHandle.Utilities" />
   </ItemGroup>
 
 </Project>
