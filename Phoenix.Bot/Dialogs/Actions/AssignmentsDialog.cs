@@ -137,7 +137,7 @@ namespace Phoenix.Bot.Dialogs.Actions
                     
 
                     string title = groupsNum == 1 ? "Εργασία" : "Εργασίες";
-                    string courseFullName = lecture!.Course.Name + lecture!.Course.SubCourse;
+                    string courseFullName = lecture!.Course.GetNameWithSubcourse();
 
                     var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
                     {
@@ -184,7 +184,7 @@ namespace Phoenix.Bot.Dialogs.Actions
                     var lecture = await _lectureRepository.FindPrimaryAsync(group.Key);
 
                     string title = groupsNum == 1 ? "Διαγώνισμα" : "Διαγωνίσματα";
-                    string courseFullName = lecture!.Course.Name + lecture!.Course.SubCourse;
+                    string courseFullName = lecture!.Course.GetNameWithSubcourse();
 
                     var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
                     {

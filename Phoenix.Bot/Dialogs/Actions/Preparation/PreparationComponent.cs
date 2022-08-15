@@ -86,7 +86,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
         #region Selectables
 
-        protected static Dictionary<int, string> GetSelectables(IEnumerable<User> users)
+        internal static Dictionary<int, string> GetSelectables(IEnumerable<User> users)
         {
             if (users is null)
                 throw new ArgumentNullException(nameof(users));
@@ -94,7 +94,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             return users.ToDictionary(u => u.AspNetUserId, u => u.FirstName);
         }
 
-        protected static Dictionary<int, string> GetSelectables(IEnumerable<Course> courses,
+        internal static Dictionary<int, string> GetSelectables(IEnumerable<Course> courses,
             bool showByGroup = false)
         {
             if (courses is null)
@@ -109,7 +109,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             return courses.ToDictionary(c => c.Id, elementSelector);
         }
 
-        protected static Dictionary<int, string> GetSelectables(IEnumerable<DateTimeOffset> dates,
+        internal static Dictionary<int, string> GetSelectables(IEnumerable<DateTimeOffset> dates,
             string dateFormat = "d/M")
         {
             if (dates is null)
@@ -118,7 +118,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
             return new(dates.Select((d, i) => new KeyValuePair<int, string>(i, d.ToString(dateFormat))));
         }
 
-        protected static Dictionary<int, string> GetSelectables(IEnumerable<Lecture> lectures)
+        internal static Dictionary<int, string> GetSelectables(IEnumerable<Lecture> lectures)
         {
             if (lectures is null)
                 throw new ArgumentNullException(nameof(lectures));
