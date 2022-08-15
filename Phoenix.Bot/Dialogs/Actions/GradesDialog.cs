@@ -1,22 +1,21 @@
-﻿using Microsoft.Bot.Builder.Dialogs;
+﻿using Microsoft.Bot.Builder;
+using Microsoft.Bot.Builder.Dialogs;
 using Phoenix.Bot.Utilities.Dialogs;
+using Phoenix.DataHandle.Identity;
 using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
-    public class GradesDialog : ComponentDialog
+    public class GradesDialog : StateDialog
     {
-        private readonly ExamRepository examRepository;
-
-        public GradesDialog(PhoenixContext phoenixContext)
-            : base(nameof(GradesDialog))
+        public GradesDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext)
+            : base(userState, convState, userManager, phoenixContext, nameof(BroadcastDialog))
         {
-            examRepository = new ExamRepository(phoenixContext);
+            throw new NotImplementedException();
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Grades.Top,
                 new WaterfallStep[]
