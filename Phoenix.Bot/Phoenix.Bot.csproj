@@ -3,11 +3,9 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <ApplicationInsightsResourceId>/subscriptions/21af8426-0b31-4244-9a9f-50c08ee90ee4/resourceGroups/PhoenicopterusRsrcG/providers/microsoft.insights/components/phoenicopterus</ApplicationInsightsResourceId>
-    <UserSecretsId>70734456-ea89-439b-8a3e-ae66329e51e0</UserSecretsId>
     <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
     <Authors>AskPhoenix</Authors>
-    <Copyright>AskPhoenix 2021</Copyright>
+    <Copyright>AskPhoenix 2022</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
     <Version>3.0.0-beta.0</Version>
@@ -30,8 +28,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.*" />
     <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.*" />
-    <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.124" />
-    <PackageReference Include="Phoenix.Language" Version="3.0.0-alpha.9" />
+    <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.*" />
+    <PackageReference Include="Phoenix.Language" Version="3.0.0-alpha.*" />
   </ItemGroup>
 
   <ItemGroup>

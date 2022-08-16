@@ -1,5 +1,4 @@
 using Bot.Builder.Community.Storage.EntityFramework;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Connector.Authentication;
 using Microsoft.EntityFrameworkCore;
@@ -38,8 +37,7 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
     .AddRoles<ApplicationRole>()
     .AddUserStore<ApplicationStore>()
     .AddUserManager<ApplicationUserManager>()
-    .AddEntityFrameworkStores<ApplicationContext>()
-    .AddDefaultTokenProviders();
+    .AddEntityFrameworkStores<ApplicationContext>();
 
 #endregion
 

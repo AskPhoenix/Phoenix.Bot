@@ -200,7 +200,7 @@ namespace Phoenix.Bot.Dialogs.Actions
             var offset = CalendarExtensions.CalculateTimeZoneOffset(
                 CData.School.SchoolSetting.TimeZone, DateTime.UtcNow);
 
-            options.ScheduledFor = ResolveHelper.ResolveDateTimePromptResult(res, msg).ToOffset(offset).Date;
+            options.ScheduledFor = ResolveHelper.ResolveDateTimePromptResult(res, msg).Date;
 
             var now = CalendarExtensions.TimeZoneNow(CData.School.SchoolSetting.TimeZone);
             var choices = DaypartExtensions.FindFutureDayparts(now).Select(dp => dp.ToFriendlyString()).ToList();

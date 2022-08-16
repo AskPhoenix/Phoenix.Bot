@@ -207,7 +207,7 @@ namespace Phoenix.Bot.Bots
             foreach (var affConn in affiliatedConnections)
             {
                 botDataToRemove.AddRange(botConvData
-                    .Where(bd => bd.RealId.Contains(affConn.ChannelDisplayName))
+                    .Where(bd => bd.RealId.Contains(affConn.Channel))
                     .Where(bd => bd.RealId.Contains(affConn.ChannelKey)));
             }
 
