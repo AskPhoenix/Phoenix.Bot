@@ -32,9 +32,13 @@ namespace Phoenix.Bot.Adapters
                 if (exception is BotException botException)
                 {
                     await turnCtx.SendActivityAsync(botException.Message);
-                    await turnCtx.SendActivityAsync(botException.Solution);
-                    await turnCtx.SendActivityAsync(MessageFactory.SuggestedActions(
-                        new string[1] { "🏠 Αρχική" }, $"({ErrorResources.Code}: {botException.Code})"));
+
+                    if (!botException.ShowMessageOnly)
+                    {
+                        await turnCtx.SendActivityAsync(botException.Solution);
+                        await turnCtx.SendActivityAsync(MessageFactory.SuggestedActions(
+                            new string[1] { "🏠 Αρχική" }, $"({ErrorResources.Code}: {botException.Code})"));
+                    }
 
                     logger.LogError(exception, "Bot Error {Name}: {Code}",
                         botException.Error.ToString(), botException.Code);

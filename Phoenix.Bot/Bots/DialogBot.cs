@@ -51,8 +51,10 @@ namespace Phoenix.Bot.Bots
         }
 
         public override async Task OnTurnAsync(ITurnContext turnCtx,
-            CancellationToken canTkn = default)
+        CancellationToken canTkn = default)
         {
+            await turnCtx.SendActivityAsync(new Activity { Type = ActivityTypes.Typing }, canTkn);
+
             var userData = await _userDataAcsr.GetAsync(turnCtx, () => new(), canTkn);
             var convData = await _convDataAcsr.GetAsync(turnCtx, () => new(), canTkn);
 
@@ -155,7 +157,7 @@ namespace Phoenix.Bot.Bots
                     case Command.GetStarted:
                     case Command.Greeting:
                         await GreetAsync(turnCtx);
-                        break;
+                        goto case Command.Reset;
 
                     case Command.Reset:
                         await _convState.DeleteAsync(turnCtx, canTkn);

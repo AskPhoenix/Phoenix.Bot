@@ -99,7 +99,7 @@ namespace Phoenix.Bot.Dialogs
             var foundChoice = (FoundChoice)stepCtx.Result;
 
             if (foundChoice.Index == 1)
-                throw new BotException(BotError.UserNotAcceptedTerms);
+                throw new BotException(BotError.UserNotAcceptedTerms, showMessageOnly: true);
                
             await stepCtx.Context.SendActivityAsync("Τέλεια! Τώρα μπορούμε να συνεχίσουμε με τη σύνδεσή σου! 😁");
             return await stepCtx.BeginDialogAsync(
