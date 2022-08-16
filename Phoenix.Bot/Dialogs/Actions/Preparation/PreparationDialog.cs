@@ -47,7 +47,7 @@ namespace Phoenix.Bot.Dialogs.Actions.Preparation
 
             bool done = !options.Preparations.TryPeek(out BotActionPreparation nextPrep);
             if (done || nextPrep == BotActionPreparation.NoPreparation)
-                return await stepCtx.EndDialogAsync(options.GetActionOptions(), canTkn);
+                return await stepCtx.EndDialogAsync(options, canTkn);
 
             // If all preparation component options are null, then the selection concerns the current user
             var prepComponentOptions = new PreparationComponentOptions() 

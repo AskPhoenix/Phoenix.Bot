@@ -6,6 +6,7 @@ using Phoenix.Bot.Utilities.AdaptiveCards;
 using Phoenix.Bot.Utilities.Linguistic;
 using Phoenix.Bot.Utilities.State.Options.Actions;
 using Phoenix.Bot.Utilities.State.Options.Actions.Preparation;
+using Phoenix.DataHandle.Base.Entities;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
@@ -42,17 +43,11 @@ namespace Phoenix.Bot.Dialogs.Actions
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Broadcast.Preparation,
                 new WaterfallStep[]
                 {
-                    InitialStepAsync,
                     MessageAskStepAsync,
-                    MessageGetStepAsync,
                     DateAskStepAsync,
-                    DateGetStepAsync,
                     DaypartAskStepAsync,
-                    DaypartGetStepAsync,
                     AudienceAskStepAsync,
-                    AudienceGetStepAsync,
                     VisibilityAskStepAsync,
-                    VisibilityGetStepAsync,
                     GroupAskStepAsync,
                     GroupGetStepAsync
                 }));
@@ -69,25 +64,29 @@ namespace Phoenix.Bot.Dialogs.Actions
                 stepCtx.Options, canTkn);
         }
 
-        private async Task<DialogTurnResult> ConfirmStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
+        private async Task<DialogTurnResult> ConfirmStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var broadcast = (Broadcast)stepCtx.Result;
-            stepCtx.Values.Add(nameof(Broadcast), broadcast);
+            var result = (BroadcastOptions)stepCtx.Result;
+            stepCtx.Values.Add(nameof(IBroadcastBase), result);
 
             var card = new AdaptivePhoenixCard(new AdaptiveElement[]
             {
                 new AdaptiveTextBlockHeaderLight("Νέα Ανακοίνωση"),
-                new AdaptiveRichFactSetLight("Περιεχόμενο ", broadcast.Message),
-                new AdaptiveRichFactSetLight("Ημερομηνία ", broadcast.ScheduledFor.ToString("dd/MM") + " - " +
-                    broadcast.Daypart.ToFriendlyString(), separator: true),
-                new AdaptiveRichFactSetLight("Κοινό ", broadcast.Audience.ToFriendlyString(), separator: true)
+                new AdaptiveRichFactSetLight("Περιεχόμενο ", result.Message),
+                new AdaptiveRichFactSetLight("Ημερομηνία ", result.ScheduledFor.ToString("dd/MM") + " - " +
+                    result.Daypart.ToFriendlyString(), separator: true),
+                new AdaptiveRichFactSetLight("Κοινό ", result.Audience.ToFriendlyString(), separator: true)
             });
             
-            string visibilityText = broadcast.Visibility.ToFriendlyString();
-            if (broadcast.Visibility == BroadcastVisibility.Group)
+            string visibilityText = result.Visibility.ToFriendlyString();
+            if (result.Visibility == BroadcastVisibility.Group)
             {
-                var courseFullNames = broadcast.Courses.Select(c => c.GetFullName());
-                visibilityText += string.Join(", ", courseFullNames);
+                var course = await _courseRepository.FindPrimaryAsync(result.CourseId!.Value, canTkn);
+                if (course is null)
+                    throw new BotException(BotError.CourseNotValid);
+
+                visibilityText += course.GetFullName();
             }
 
             card.Body.Add(new AdaptiveRichFactSetLight("Ορατότητα ", visibilityText, separator: true));
@@ -100,7 +99,8 @@ namespace Phoenix.Bot.Dialogs.Actions
                 canTkn);
         }
 
-        private async Task<DialogTurnResult> SetupStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
+        private async Task<DialogTurnResult> SetupStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
             var foundChoice = (FoundChoice)stepCtx.Result;
             bool confirmed = foundChoice.Index == 0;
@@ -113,24 +113,30 @@ namespace Phoenix.Bot.Dialogs.Actions
                     stepCtx.Options, canTkn);
             }
 
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
+            var result = (BroadcastOptions)stepCtx.Values[nameof(IBroadcastBase)];
 
-            broadcast.School = CData.School;
-            broadcast.Author = UData.PhoenixUser;
-            broadcast.Status = BroadcastStatus.Pending;
+            var broadcast = new Broadcast()
+            {
+                SchoolId = CData.SchoolId!.Value,
+                AuthorId = UData.UserId,
+                Message = result.Message,
+                ScheduledFor = result.ScheduledFor,
+                Daypart = result.Daypart,
+                Audience = result.Audience,
+                Visibility = result.Visibility,
+                Status = BroadcastStatus.Pending
+            };
 
             await _broadcastRepository.CreateAsync(broadcast);
 
-            if (broadcast.Daypart == Daypart.Now)
+            if (result.Daypart == Daypart.Now)
             {
                 //TODO: Create a BroadcastWrapper
                 await httpClient.PostAsync(ProactiveBotUrl + $"broadcast/id/{broadcast.Id}", null);
                 await stepCtx.Context.SendActivityAsync("Η ανακοίνωση εστάλη επιτυχώς!");
             }
             else
-            {
                 await stepCtx.Context.SendActivityAsync("Η ανακοίνωση καταχωρήθηκε επιτυχώς!");
-            }
 
             return await stepCtx.EndDialogAsync(null, canTkn);
         }
@@ -138,14 +144,6 @@ namespace Phoenix.Bot.Dialogs.Actions
         #endregion
 
         #region Preparation Waterfall Dialog
-
-        private async Task<DialogTurnResult> InitialStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
-            stepCtx.Values.Add(nameof(Broadcast), new Broadcast());
-
-            return await stepCtx.NextAsync(null, canTkn);
-        }
 
         private async Task<DialogTurnResult> MessageAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
@@ -159,20 +157,14 @@ namespace Phoenix.Bot.Dialogs.Actions
                 canTkn);
         }
 
-        private async Task<DialogTurnResult> MessageGetStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
-            broadcast.Message = (string)stepCtx.Result;
-
-            await stepCtx.Context.SendActivityAsync("Μήνυμα ελήφθη!");
-
-            return await stepCtx.NextAsync(null, canTkn);
-        }
-
         private async Task<DialogTurnResult> DateAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
+            var options = (BroadcastOptions)stepCtx.Options;
+            options.Message = (string)stepCtx.Result;
+
+            await stepCtx.Context.SendActivityAsync("Μήνυμα ελήφθη!");
+
             var choices = new List<string>(5)
             {
                 DateLiteral.Today.ToFriendlyString(),
@@ -197,25 +189,19 @@ namespace Phoenix.Bot.Dialogs.Actions
                 }, canTkn);
         }
 
-        private async Task<DialogTurnResult> DateGetStepAsync(WaterfallStepContext stepCtx,
+        private async Task<DialogTurnResult> DaypartAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
+            var options = (BroadcastOptions)stepCtx.Options;
 
             var msg = stepCtx.Context.Activity.Text;
             var res = (IList<DateTimeResolution>)stepCtx.Result;
 
             var offset = CalendarExtensions.CalculateTimeZoneOffset(
                 CData.School.SchoolSetting.TimeZone, DateTime.UtcNow);
-            
-            broadcast.ScheduledFor = ResolveHelper.ResolveDateTimePromptResult(res, msg).ToOffset(offset).Date;
 
-            return await stepCtx.NextAsync(null, canTkn);
-        }
+            options.ScheduledFor = ResolveHelper.ResolveDateTimePromptResult(res, msg).ToOffset(offset).Date;
 
-        private async Task<DialogTurnResult> DaypartAskStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
             var now = CalendarExtensions.TimeZoneNow(CData.School.SchoolSetting.TimeZone);
             var choices = DaypartExtensions.FindFutureDayparts(now).Select(dp => dp.ToFriendlyString()).ToList();
 
@@ -229,20 +215,14 @@ namespace Phoenix.Bot.Dialogs.Actions
                 }, canTkn);
         }
 
-        private async Task<DialogTurnResult> DaypartGetStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
-            var foundChoice = (FoundChoice)stepCtx.Result;
-
-            broadcast.Daypart = (Daypart)(foundChoice.Index + 1);
-
-            return await stepCtx.NextAsync(null, canTkn);
-        }
-
         private async Task<DialogTurnResult> AudienceAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
+            var options = (BroadcastOptions)stepCtx.Options;
+            var foundChoice = (FoundChoice)stepCtx.Result;
+
+            options.Daypart = (Daypart)(foundChoice.Index + 1);
+
             return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new PromptOptions
@@ -253,46 +233,32 @@ namespace Phoenix.Bot.Dialogs.Actions
                 }, canTkn);
         }
 
-        private async Task<DialogTurnResult> AudienceGetStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
-            var foundChoice = (FoundChoice)stepCtx.Result;
-
-            broadcast.Audience = (BroadcastAudience)(foundChoice.Index + 1);
-
-            await stepCtx.Context.SendActivityAsync("ΟΚ! Και κάτι ακόμη...");
-
-            return await stepCtx.NextAsync(null, canTkn);
-        }
-
         private async Task<DialogTurnResult> VisibilityAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
+            var options = (BroadcastOptions)stepCtx.Options;
+            var foundChoice = (FoundChoice)stepCtx.Result;
+
+            options.Audience = (BroadcastAudience)(foundChoice.Index + 1);
+
+            await stepCtx.Context.SendActivityAsync("ΟΚ! Και κάτι ακόμη...");
+
             return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new YesNoPromptOptions("Η ανακοίνωση αφορά κάποιο συγκεκριμένο τμήμα;", simpleNo: true),
                 canTkn);
         }
 
-        private async Task<DialogTurnResult> VisibilityGetStepAsync(WaterfallStepContext stepCtx,
-            CancellationToken canTkn)
-        {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
-            var foundChoice = (FoundChoice)stepCtx.Result;
-
-            broadcast.Visibility = (BroadcastVisibility)(foundChoice.Index + 1);
-
-            if (broadcast.Visibility == BroadcastVisibility.Group)
-                return await stepCtx.NextAsync(null, canTkn);
-
-            return await stepCtx.EndDialogAsync(broadcast, canTkn);
-        }
-
         private async Task<DialogTurnResult> GroupAskStepAsync(WaterfallStepContext stepCtx,
             CancellationToken canTkn)
         {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
+            var options = (BroadcastOptions)stepCtx.Options;
+            var foundChoice = (FoundChoice)stepCtx.Result;
+
+            options.Visibility = (BroadcastVisibility)(foundChoice.Index + 1);
+
+            if (options.Visibility != BroadcastVisibility.Group)
+                return await stepCtx.EndDialogAsync(options, canTkn);
 
             var preparationOptions = new PreparationOptions((ActionOptions)stepCtx.Options,
                 new[] { BotActionPreparation.GroupSelection });
@@ -300,18 +266,15 @@ namespace Phoenix.Bot.Dialogs.Actions
             return await stepCtx.BeginDialogAsync(nameof(PreparationDialog), preparationOptions, canTkn);
         }
 
-        private async Task<DialogTurnResult> GroupGetStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
+        private async Task<DialogTurnResult> GroupGetStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var broadcast = (Broadcast)stepCtx.Values[nameof(Broadcast)];
+            var options = (BroadcastOptions)stepCtx.Options;
             var actionOptions = (ActionOptions)stepCtx.Result;
 
-            var course = await _courseRepository.FindPrimaryAsync(actionOptions.CourseId!.Value, canTkn);
-            if (course is null)
-                throw new BotException(BotError.CourseNotValid);
+            options.CourseId = actionOptions.CourseId;
 
-            broadcast.Courses.Add(course);
-
-            return await stepCtx.EndDialogAsync(broadcast, canTkn);
+            return await stepCtx.EndDialogAsync(options, canTkn);
         }
 
         #endregion

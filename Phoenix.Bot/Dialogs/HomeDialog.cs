@@ -113,7 +113,11 @@ namespace Phoenix.Bot.Dialogs
             {
                 case BotAction.SearchExercises:
                 case BotAction.Assignments:
-                    AssignmentsOptions assignmentsOptions = new(actionOptions, options.Action);
+                    AssignmentsOptions assignmentsOptions = new(actionOptions)
+                    {
+                        Search = options.Action == BotAction.SearchExercises
+                    };
+
                     return await stepCtx.BeginDialogAsync(nameof(AssignmentsDialog), assignmentsOptions, canTkn);
                 
                 case BotAction.Supplementary:
@@ -121,7 +125,10 @@ namespace Phoenix.Bot.Dialogs
 
                 case BotAction.ScheduleWeek:
                 case BotAction.ScheduleDay:
-                    ScheduleOptions scheduleOptions = new(actionOptions, options.Action);
+                    ScheduleOptions scheduleOptions = new(actionOptions)
+                    {
+                        Daily = options.Action == BotAction.ScheduleDay
+                    };
                     return await stepCtx.BeginDialogAsync(nameof(ScheduleDialog), scheduleOptions, canTkn);
                 
                 case BotAction.Grades:
@@ -135,11 +142,17 @@ namespace Phoenix.Bot.Dialogs
 
                 case BotAction.Exercises:
                 case BotAction.Exams:
-                    TeacherExtensionOptions teacherExtensionOptions = new(actionOptions, options.Action);
+                    TeacherExtensionOptions teacherExtensionOptions = new(actionOptions)
+                    {
+                        ExtensionAction = options.Action
+                    };
+
                     return await stepCtx.BeginDialogAsync(nameof(TeacherExtensionDialog), teacherExtensionOptions, canTkn);
                 
                 case BotAction.Broadcast:
-                    return await stepCtx.BeginDialogAsync(nameof(BroadcastDialog), actionOptions, canTkn);
+                    var broadcastOptions = new BroadcastOptions(actionOptions);
+
+                    return await stepCtx.BeginDialogAsync(nameof(BroadcastDialog), broadcastOptions, canTkn);
 
                 case BotAction.Help:
                     return await stepCtx.BeginDialogAsync(nameof(HelpDialog), new HelpOptions(), canTkn);

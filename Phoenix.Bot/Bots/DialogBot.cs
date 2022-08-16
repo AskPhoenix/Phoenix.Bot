@@ -66,7 +66,7 @@ namespace Phoenix.Bot.Bots
             if (!schoolConnection.ActivatedAt.HasValue)
                 throw new BotException(BotError.SchoolNotConnected);
 
-            convData.School = schoolConnection.Tenant;
+            convData.Refresh(schoolConnection);
             await _convDataAcsr.SetAsync(turnCtx, convData, canTkn);
 
             // Check if a user is connected and if their connection is active
