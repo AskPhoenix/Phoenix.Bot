@@ -2,15 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<Nullable>enable</Nullable>
+	<Version>3.0.0</Version>
+	<Authors>AskPhoenix</Authors>
+	<Company>AskPhoenix</Company>
     <Description>A WebApp with Bot Framework for Phoenix Bot</Description>
-    <Authors>AskPhoenix</Authors>
     <Copyright>AskPhoenix 2022</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
-    <Version>3.0.0-beta.0</Version>
-    <Nullable>enable</Nullable>
-	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,8 +27,8 @@
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.17.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.*" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.0-beta.*" />
-    <PackageReference Include="Phoenix.DataHandle" Version="3.0.0-beta1.*" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.*" />
+    <PackageReference Include="Phoenix.DataHandle" Version="3.0.*" />
     <PackageReference Include="Phoenix.Language" Version="3.0.0-alpha.*" />
   </ItemGroup>
 
