@@ -1,35 +1,23 @@
 ﻿using AdaptiveCards;
-using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
 using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Main;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
-    public class AssignmentsDialog : ComponentDialog
+    public class AssignmentsDialog : StateDialog
     {
-        private readonly ExerciseRepository exerciseRepository;
-        private readonly ExamRepository examRepository;
-        private readonly LectureRepository lectureRepository;
+        private readonly LectureRepository _lectureRepository;
 
-        public AssignmentsDialog(PhoenixContext phoenixContext)
-            : base(nameof(AssignmentsDialog))
+        public AssignmentsDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext)
+            : base(userState, convState, userManager, phoenixContext, nameof(AssignmentsDialog))
         {
-            this.exerciseRepository = new ExerciseRepository(phoenixContext);
-            this.examRepository = new ExamRepository(phoenixContext);
-            this.lectureRepository = new LectureRepository(phoenixContext);
-            this.lectureRepository.Include(l => l.Course);
+            _lectureRepository = new(phoenixContext, nonObviatedOnly: true);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Assignments.Homework,
                 new WaterfallStep[]
@@ -42,100 +30,116 @@ namespace Phoenix.Bot.Dialogs.Actions
 
         #region Homework Waterfall Dialog
 
-        private async Task<DialogTurnResult> HomeworkStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> HomeworkStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var options = stepContext.Options as AssignmentsOptions;
-            IQueryable<Exercise> exercises;
-            IQueryable<Exam> exams;
-            int exercisesNum, examsNum;
+            var options = (AssignmentsOptions)stepCtx.Options;
+
+            IEnumerable<Exercise> exercises = Enumerable.Empty<Exercise>();
+            IEnumerable<Exam> exams = Enumerable.Empty<Exam>();
+
+            var now = CalendarExtensions.TimeZoneNow(CData.School.SchoolSetting.TimeZone);
+            var dateToPrepareFor = options.DateToPrepareFor ?? now.Date;
 
             if (options.LectureId.HasValue)     // Students' Search or Teachers' Assignments
             {
-                exercises = exerciseRepository.FindForLecture(options.LectureId.Value);
-                exercisesNum = exercises?.Count() ?? 0;
+                var lecture = await _lectureRepository.FindPrimaryAsync(options.LectureId.Value, canTkn);
+                if (lecture is null)
+                {
+                    await stepCtx.Context.SendActivityAsync($"Δε βρέθηκε διάλεξη για τις {dateToPrepareFor}.");
+                    return await stepCtx.EndDialogAsync(null, canTkn);
+                }
+
+                exercises = lecture.Exercises;
 
                 if (!options.Search)            // Find past exams only for Teachers
                 {
-                    exams = examRepository.FindForLecture(options.LectureId.Value);
-                    examsNum = exams?.Count() ?? 0;
+                    exams = lecture.Exams;
 
-                    if (exercisesNum == 0 && examsNum == 0)
+                    if (!exercises.Any() && !exams.Any())
                     {
-                        await stepContext.Context.SendActivityAsync($"Δε βρέθηκαν εργασίες, ούτε διαγωνίσματα για τις {options.DateToPrepareFor.Value:d/M}.");
-                        return await stepContext.EndDialogAsync(null, cancellationToken);
+                        await stepCtx.Context.SendActivityAsync($"Δε βρέθηκαν εργασίες, ούτε διαγωνίσματα για τις {dateToPrepareFor:d/M}.");
+                        return await stepCtx.EndDialogAsync(null, canTkn);
                     }
                 }
                 else
                 {
-                    exams = null;
-                    examsNum = 0;
-
-                    if (exercisesNum == 0)
+                    if (!exercises.Any())
                     {
-                        await stepContext.Context.SendActivityAsync($"Δε βρέθηκαν εργασίες για τις {options.DateToPrepareFor.Value:d/M}.");
-                        return await stepContext.EndDialogAsync(null, cancellationToken);
+                        await stepCtx.Context.SendActivityAsync($"Δε βρέθηκαν εργασίες για τις {dateToPrepareFor:d/M}.");
+                        return await stepCtx.EndDialogAsync(null, canTkn);
                     }
                 }
             }
             else                                // Students' Assignments
             {
-                exercises = exerciseRepository.FindForStudent(options.ActiveUserId, Tense.Future);
-                exams = examRepository.FindForStudent(options.ActiveUserId, Tense.Future);
+                var lectures = UData.PhoenixUser!
+                    .Courses
+                    .SelectMany(c => c.Lectures)
+                    .Where(l => l.StartDateTime >= now);
 
-                exercisesNum = exercises?.Count() ?? 0;
-                examsNum = exams?.Count() ?? 0;
-
-                if (exercisesNum == 0 && examsNum == 0)
+                if (!lectures.Any())
                 {
-                    await stepContext.Context.SendActivityAsync("Δεν υπάρχουν ακόμα εργασίες για το επόμενο μάθημα.");
-                    if (!options.AffiliatedUserId.HasValue)
-                        await stepContext.Context.SendActivityAsync("Απόλαυσε τον ελεύθερο χρόνο σου! 😎");
+                    await stepCtx.Context.SendActivityAsync($"Δε βρέθηκαν διαλέξεις.");
+                    return await stepCtx.EndDialogAsync(null, canTkn);
+                }
 
-                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                exercises = lectures.SelectMany(l => l.Exercises);
+                exams = lectures.SelectMany(l => l.Exams);
+
+                if (!exercises.Any() && !exams.Any())
+                {
+                    await stepCtx.Context.SendActivityAsync("Δεν υπάρχουν ακόμα εργασίες για το επόμενο μάθημα.");
+                    if (!options.AffiliatedUserId.HasValue)
+                        await stepCtx.Context.SendActivityAsync("Απόλαυσε τον ελεύθερο χρόνο σου! 😎");
+
+                    return await stepCtx.EndDialogAsync(null, canTkn);
                 }
             }
 
-            string msg = options.LectureId.HasValue ? $"Για τις {options.DateToPrepareFor.Value:d/M} βρέθκαν:" : "Για την επόμενη φορά βρέθηκαν:";
-            if (exercisesNum > 0)
-                msg += $"\n  •  {exercisesNum} εργασίες";
-            if (examsNum > 0)
-                msg += $"\n  •  {examsNum} διαγωνίσματα";
+            string msg = options.LectureId.HasValue ? $"Για τις {dateToPrepareFor:d/M} βρέθκαν:" : "Για την επόμενη φορά βρέθηκαν:";
+            if (exercises.Any())
+                msg += $"\n  •  {exercises.Count()} εργασίες";
+            if (exams.Any())
+                msg += $"\n  •  {exams.Count()} διαγωνίσματα";
 
-            var adaptiveCards = new List<AdaptiveCard>(exercisesNum + examsNum);
-            adaptiveCards.AddRange(await this.GetCardsAsync(exercises, options.ActiveUserId));
-            adaptiveCards.AddRange(await this.GetCardsAsync(exams));
+            var adaptiveCards = new List<AdaptiveCard>(exercises.Count() + exams.Count());
+            adaptiveCards.AddRange(await GetCardsAsync(exercises));
+            adaptiveCards.AddRange(await GetCardsAsync(exams));
 
-            var attachments = adaptiveCards.Select(c => new Attachment(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(c)));
-            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachments, text: msg));
+            var attachments = adaptiveCards.Select(
+                c =>new Attachment(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(c)));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Attachment(attachments, text: msg));
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
-        private async Task<List<AdaptiveCard>> GetCardsAsync(IQueryable<Exercise> exercises, int activeUserId)
+        private async Task<List<AdaptiveCard>> GetCardsAsync(IEnumerable<Exercise> exercises)
         {
-            List<AdaptiveCard> cards = null;
+            var cards = new List<AdaptiveCard>();
 
-            if ((exercises?.Count() ?? 0) != 0)
+            if (exercises.Any())
             {
                 var exerciseGroups = exercises.GroupBy(e => e.LectureId);
                 int groupsNum = exerciseGroups.Count();
-                cards = new List<AdaptiveCard>(groupsNum);
 
-                foreach (var exerciseGroup in exerciseGroups)
-                {
-                    var lecture = await lectureRepository.Find(exerciseGroup.Key);
+                foreach (var group in exerciseGroups)
+                {                    
+                    var lecture = await _lectureRepository.FindPrimaryAsync(group.Key);
 
-                    var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
-                    {
-                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-                    };
+                    
 
                     string title = groupsNum == 1 ? "Εργασία" : "Εργασίες";
-                    card.Body.Add(new AdaptiveTextBlockHeaderLight($"{title}: {lecture.Course.NameWithSubcourse}"));
-                    card.Body.Add(new AdaptiveTextBlockHeaderLight($"{lecture.StartDateTime:g}"));
+                    string courseFullName = lecture!.Course.GetNameWithSubcourse();
+
+                    var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
+                    {
+                        new($"{title}: {courseFullName}"),
+                        new($"{lecture.StartDateTime:g}")
+                    });
 
                     int i = 1;
-                    foreach (var exercise in exerciseGroup)
+                    foreach (var exercise in group)
                     {
                         if (groupsNum > 1)
                             card.Body.Add(new AdaptiveTextBlockHeaderLight($"Εργασία {i++}") { Size = AdaptiveTextSize.Large });
@@ -143,10 +147,10 @@ namespace Phoenix.Bot.Dialogs.Actions
                             card.Body.Add(new AdaptiveRichFactSetLight("Βιβλίο ", exercise.Book.Name));
                         if (!string.IsNullOrWhiteSpace(exercise.Page))
                             card.Body.Add(new AdaptiveRichFactSetLight("Σελίδα ", exercise.Page, separator: true));
-                        if (lecture.StartDateTime.ToUniversalTime() < DateTimeOffset.UtcNow)
+                        if (lecture.StartDateTime < DateTimeOffset.UtcNow)
                         {
-                            var grade = exerciseRepository.FindGrade(activeUserId, exercise.Id);
-                            card.Body.Add(new AdaptiveRichFactSetLight("Βαθμός ", grade == null ? "-" : grade.ToString(), separator: true));
+                            var grade = exercise.Grades.FirstOrDefault();
+                            card.Body.Add(new AdaptiveRichFactSetLight("Βαθμός ", grade is null ? "-" : grade.Score.ToString(), separator: true));
                         }
                         card.Body.Add(new AdaptiveRichFactSetLight("Άσκηση ", exercise.Name, separator: true));
                         card.Body.Add(new AdaptiveRichFactSetLight("Σχόλια ", string.IsNullOrWhiteSpace(exercise.Comments) ? "-" : exercise.Comments, separator: true));
@@ -159,39 +163,38 @@ namespace Phoenix.Bot.Dialogs.Actions
             return cards;
         }
 
-        private async Task<List<AdaptiveCard>> GetCardsAsync(IQueryable<Exam> exams)
+        private async Task<List<AdaptiveCard>> GetCardsAsync(IEnumerable<Exam> exams)
         {
-            List<AdaptiveCard> cards = null;
+            var cards = new List<AdaptiveCard>();
 
-            if ((exams?.Count() ?? 0) != 0)
+            if (exams.Any())
             {
                 var examGroups = exams.GroupBy(e => e.LectureId);
                 int groupsNum = examGroups.Count();
-                cards = new List<AdaptiveCard>(groupsNum);
 
-                foreach (var examGroup in examGroups)
+                foreach (var group in examGroups)
                 {
-                    var lecture = await lectureRepository.Find(examGroup.Key);
-
-                    var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
-                    {
-                        BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-                    };
+                    var lecture = await _lectureRepository.FindPrimaryAsync(group.Key);
 
                     string title = groupsNum == 1 ? "Διαγώνισμα" : "Διαγωνίσματα";
-                    card.Body.Add(new AdaptiveTextBlockHeaderLight($"{title}: {lecture.Course.NameWithSubcourse}"));
-                    card.Body.Add(new AdaptiveTextBlockHeaderLight($"{lecture.StartDateTime:g}"));
+                    string courseFullName = lecture!.Course.GetNameWithSubcourse();
+
+                    var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
+                    {
+                        new($"{title}: {courseFullName}"),
+                        new($"{lecture.StartDateTime:g}")
+                    });
 
                     int i = 1;
-                    foreach (var exam in examGroup)
+                    foreach (var exam in group)
                     {
                         if (groupsNum > 1)
                             card.Body.Add(new AdaptiveTextBlockHeaderLight($"Διαγώνισμα {i++}") { Size = AdaptiveTextSize.Large });
 
                         int j = 1;
-                        foreach (var material in exam.Material)
+                        foreach (var material in exam.Materials)
                         {
-                            if (exam.Material.Count() > 1)
+                            if (exam.Materials.Count > 1)
                                 card.Body.Add(new AdaptiveTextBlockHeaderLight($"Ύλη {j++}") { Size = AdaptiveTextSize.Large });
                             if (material.Book != null)
                                 card.Body.Add(new AdaptiveRichFactSetLight("Βιβλίο ", material.Book.Name));
@@ -202,7 +205,6 @@ namespace Phoenix.Bot.Dialogs.Actions
                             card.Body.Add(new AdaptiveRichFactSetLight("Σχόλια ", string.IsNullOrWhiteSpace(material.Comments) ? "-" : material.Comments, separator: true));
                         }
                     }
-
                     cards.Add(card);
                 }
             }

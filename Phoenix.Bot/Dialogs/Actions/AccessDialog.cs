@@ -1,29 +1,22 @@
 ﻿using AdaptiveCards;
-using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
 using Phoenix.Bot.Utilities.AdaptiveCards;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.State.Options.Actions;
-using Phoenix.DataHandle.Main.Models;
-using Phoenix.DataHandle.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
-    public class AccessDialog : ComponentDialog
+    public class AccessDialog : StateDialog
     {
-        private readonly AspNetUserRepository userRepository;
+        private readonly OneTimeCodeRepository _otcRepository;
 
-        public AccessDialog(PhoenixContext phoenixContext)
-            : base(nameof(AccessDialog))
+        public AccessDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext)
+            : base(userState, convState, userManager, phoenixContext, nameof(AccessDialog))
         {
-            this.userRepository = new AspNetUserRepository(phoenixContext);
+            _otcRepository = new(phoenixContext);
 
             AddDialog(new WaterfallDialog(WaterfallNames.Actions.Access.Top,
                 new WaterfallStep[]
@@ -36,49 +29,44 @@ namespace Phoenix.Bot.Dialogs.Actions
 
         #region Top Waterfall Dialog
 
-        private async Task<DialogTurnResult> AffiliatedUsersStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> AffiliatedUsersStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var options = stepContext.Options as ActionOptions;
-            var affiliatedUsers = userRepository.FindChildren(options.UserId).
-                AsEnumerable().
-                OrderBy(u => u.User.FullName);
-
-            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 2))
+            var card = new AdaptivePhoenixCard(new AdaptiveTextBlockHeaderLight[]
             {
-                BackgroundImage = new AdaptiveBackgroundImage(AdaptiveCardsHelper.DarkBackgroundImageUrl)
-            };
-            card.Body.Add(new AdaptiveTextBlockHeaderLight("Κωδικοί επαλήθευσης"));
-            card.Body.Add(new AdaptiveTextBlockHeaderLight("Ισχύουν για τα επόμενα 5 λεπτά και είναι μοναδικοί ανά χρήστη")
-            {
-                Size = AdaptiveTextSize.Medium 
+                new("Κωδικοί επαλήθευσης"),
+                new("Ισχύουν για τα επόμενα 5 λεπτά και είναι μοναδικοί ανά χρήστη")
+                {
+                    Size = AdaptiveTextSize.Medium
+                }
             });
-            //card.Body.Add(new AdaptiveRichFactSetLight("Όνομα  ", "  Κωδικός"));
 
-            var codes = new List<string>(affiliatedUsers.Count());
-            string code;
+            var affiliatedUsers = UData.PhoenixUser!.Children;
+            var codes = new HashSet<int>(affiliatedUsers.Count);
+
             foreach (var affUser in affiliatedUsers)
             {
-                do
+                while (!codes.Add(CodeGenHelper.GenerateCode(5)));
+                
+                card.Body.Add(new AdaptiveRichFactSetLight(affUser.FullName, $"{codes.Last(), 10}"));
+
+                await _otcRepository.CreateAsync(new()
                 {
-                    code = DialogsHelper.GeneratePasscode(6);
-                }
-                while (codes.Contains(code));
-                codes.Add(code);
-
-                card.Body.Add(new AdaptiveRichFactSetLight(affUser.User.FullName, $"{code, 10}"));
-
-                affUser.User.IdentifierCode = code;
-                affUser.User.IdentifierCodeCreatedAt = DateTimeOffset.UtcNow;
-                userRepository.Update(affUser);
+                    Purpose = OneTimeCodePurpose.Identification,
+                    Token = codes.Last().ToString(),
+                    UserId = affUser.AspNetUserId,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(5)
+                }, canTkn);
             }
 
-            Attachment attachment = new(contentType: AdaptiveCard.ContentType, content: JObject.FromObject(card));
+            var attachment = new Attachment(contentType: AdaptiveCard.ContentType,
+                content: JObject.FromObject(card));
 
-            string codeForm = affiliatedUsers.Count() == 1 ? "τον κωδικό" : "τους κωδικούς";
-            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment, 
-                text: $"Παρακάτω θα βρεις {codeForm} επαλήθευσης που ισχύουν μόνο για τον αντίστοιχο χρήστη τους:"));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Attachment(attachment, 
+                text: $"Χρησιμοποιείστε τους παρακάτω κωδικούς για την επαλήθευση του μαθητή στον οποίο αντιστοιχούν:"),
+                cancellationToken: canTkn);
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion

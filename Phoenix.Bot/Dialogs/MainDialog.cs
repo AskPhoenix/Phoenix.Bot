@@ -1,39 +1,24 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using System.Threading;
-using System.Threading.Tasks;
-using Phoenix.DataHandle.Main.Models;
-using System.Linq;
-using Microsoft.Bot.Builder.Dialogs.Choices;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.State;
-using Phoenix.DataHandle.Repositories;
-using Phoenix.Bot.Utilities.State.Options;
+﻿using Phoenix.Bot.Utilities.Actions;
 using Phoenix.Bot.Utilities.Linguistic;
-using Phoenix.Bot.Utilities.Actions;
-using Phoenix.DataHandle.Main;
-using System;
 
 namespace Phoenix.Bot.Dialogs
 {
-    public class MainDialog : ComponentDialog
+    public class MainDialog : StateDialog
     {
-        private readonly IStatePropertyAccessor<MainState> mainStateAccesor;
-        private readonly IStatePropertyAccessor<ConversationData> conversationDataAccessor;
-        private readonly BotState conversationState;
+        private readonly UserConnectionRepository _userConnectionRepository;
+        private readonly SchoolConnectionRepository _schoolConnectionRepository;
 
-        private readonly AspNetUserRepository userRepository;
-
-        public MainDialog(PhoenixContext phoenixContext, ConversationState conversationState,
-            IntroductionDialog introductionDialog, HomeDialog homeDialog)
-            : base(nameof(MainDialog))
+        public MainDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext,
+            IntroductionDialog introductionDialog,
+            HomeDialog homeDialog)
+            : base(userState, convState, userManager, phoenixContext, nameof(MainDialog))
         {
-            this.mainStateAccesor = conversationState.CreateProperty<MainState>(nameof(MainState));
-            this.conversationDataAccessor = conversationState.CreateProperty<ConversationData>(nameof(ConversationData));
-            this.conversationState = conversationState;
-
-            this.userRepository = new AspNetUserRepository(phoenixContext);
+            _userConnectionRepository = new(phoenixContext);
+            _schoolConnectionRepository = new(phoenixContext);
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
 
@@ -60,151 +45,115 @@ namespace Phoenix.Bot.Dialogs
             InitialDialogId = WaterfallNames.Main.Top;
         }
 
-        //TODO: Use Enum for errors
-        private async Task<DialogTurnResult> ExitAsync(string message, string solution, int error, WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            await stepContext.Context.SendActivityAsync($"{message} (Κωδ. σφάλματος: {error.ToString("D4"):0})");
-
-            if (!string.IsNullOrEmpty(solution))
-                await stepContext.Context.SendActivityAsync(solution);
-            else
-                await stepContext.Context.SendActivityAsync("Παρακαλώ επικοινώνησε με το φροντιστήριο για την επίλυση του προβλήματος.");
-
-            return await stepContext.CancelAllDialogsAsync(cancellationToken);
-        }
-
         #region Top Waterfall Dialog
 
-        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            var providerKey = stepContext.Context.Activity.From.Id;
+            if (!UData.IsConnected)
+                return await stepCtx.BeginDialogAsync(nameof(IntroductionDialog), null, canTkn);
 
-            if (!userRepository.HasLogin(provider, providerKey, onlyActive: true))
-                return await stepContext.BeginDialogAsync(nameof(IntroductionDialog), null, cancellationToken);
-
-            return await stepContext.NextAsync(true, cancellationToken);
+            return await stepCtx.NextAsync(true, canTkn);
         }
 
-        private async Task<DialogTurnResult> PostIntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> PostIntroStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            if (((bool)stepContext.Result) is not true)
-                return await this.LoopStepAsync(stepContext, cancellationToken);
+            if (!(bool)stepCtx.Result)
+                return await LoopStepAsync(stepCtx, canTkn);
 
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            if (mainState.IsRoleChecked)
-                return await stepContext.NextAsync(cancellationToken: cancellationToken);
+            if (UData.SelectedRole.HasValue)
+                return await stepCtx.NextAsync(null, canTkn);
 
-            return await stepContext.BeginDialogAsync(WaterfallNames.Main.Role, null, cancellationToken);
+            return await stepCtx.BeginDialogAsync(WaterfallNames.Main.Role, null, canTkn);
         }
 
-        private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ForwardStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+            // TODO: Check that lazy loader works here
+            if (UData.SelectedRole == RoleRank.Parent && !UData.PhoenixUser!.Children.Any())
+                throw new BotException(BotError.ParentHasNoAffiliations);
 
-            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            var providerKey = stepContext.Context.Activity.From.Id;
-
-            var user = userRepository.FindUserFromLogin(provider, providerKey);
-            if (user == null)
+            HomeOptions homeOptions = new()
             {
-                string errorMessage = "Δε βρέθηκε χρήστης με το λογαρισμό από τον οποίο προσπαθείς να συνδεθείς.";
-                string solutionsMessage = "Γράψε την εντολή \"Logout\" και προσπάθησε ξανά.";
-                
-                return await this.ExitAsync(errorMessage, solutionsMessage, error: 1, stepContext, cancellationToken);
-            }
-            
-            if (mainState.SelectedRole == Role.Parent && !userRepository.AnyAffiliatedUsers(user.Id))
-            {
-                string errorMessage = "Δε βρέθηκαν χρήστες συσχετισμένοι με αυτόν τον λογαριασμό.";
+                Action = CData.Command.ToBotAction()
+            };
 
-                return await this.ExitAsync(errorMessage, solution: null, error: 2, stepContext, cancellationToken);
-            }
-
-            var conversationData = await conversationDataAccessor.GetAsync(stepContext.Context, null, cancellationToken);
-            var homeOptions = new HomeOptions(user.Id, mainState.SelectedRole) { Action = BotAction.NoAction };
-            
-            if ((int)conversationData.Command >= CommandAttributes.ActionCommandsBase)
-                homeOptions.Action = (BotAction)(conversationData.Command - CommandAttributes.ActionCommandsBase + 1);
-
-            return await stepContext.BeginDialogAsync(nameof(HomeDialog), homeOptions, cancellationToken);
+            return await stepCtx.BeginDialogAsync(nameof(HomeDialog), homeOptions, canTkn);
         }
 
-        private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> LoopStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            return await stepContext.ReplaceDialogAsync(stepContext.ActiveDialog.Id, null, cancellationToken);
+            return await stepCtx.ReplaceDialogAsync(stepCtx.ActiveDialog.Id, null, canTkn);
         }
 
         #endregion
 
         #region Role Waterfall Dialog
 
-        private async Task<DialogTurnResult> CheckRoleAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> CheckRoleAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var mainState = await mainStateAccesor.GetAsync(stepContext.Context, null, cancellationToken);
+            var userRoles = await _userManager.GetRoleRanksAsync(UData.AppUser!);
+            int roleCount = userRoles.Count;
 
-            var provider = stepContext.Context.Activity.ChannelId.ToLoginProvider();
-            var providerKey = stepContext.Context.Activity.From.Id;
+            bool areValid = (roleCount == 1 && userRoles.Single() != RoleRank.None)
+                || (roleCount == 2
+                    && userRoles.Any(rr => rr.IsStaff()) && userRoles.Contains(RoleRank.Parent));
 
-            AspNetUsers user = userRepository.FindUserFromLogin(provider, providerKey);
-            var userRoles = userRepository.FindRoles(user).Select(r => r.Type).ToArray();
+            if (!areValid)
+                throw new BotException(BotError.RoleNotValid);
 
-            bool isStaffOrBackend = userRoles.Any(r => r.IsStaff() || r.IsBackend());
-            bool invalidMultipleRoles = userRoles.Length > 2
-                || (userRoles.Length == 2 && (!userRoles.Contains(Role.Parent) || !isStaffOrBackend));
-
-            if (invalidMultipleRoles || !userRoles.Any())
+            if (UData.IsBackend)
             {
-                string errorMessage = "Δυστυχώς έχει γίνει κάποιο λάθος με την ιδιότητά σου στο φροντιστήριο.";
-                return await this.ExitAsync(errorMessage, solution: null, error: 3, stepContext, cancellationToken);
+                stepCtx.Values.Add("RolesToSelect",
+                    RoleExtensions.ClientRoleRanks.Concat(RoleExtensions.StaffRoleRanks).ToArray());
+
+                return await stepCtx.NextAsync(null, canTkn);
             }
 
-            if (userRoles.Any(r => r.IsBackend()) || userRoles.Length == 2)
-                return await stepContext.NextAsync(userRoles, cancellationToken);
-
-            mainState = new MainState
+            if (roleCount == 2)
             {
-                IsRoleChecked = true,
-                SelectedRole = userRoles.Single()
-            };
-            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
+                stepCtx.Values.Add("RolesToSelect", userRoles.ToArray());
 
-            return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
+                return await stepCtx.NextAsync(null, canTkn);
+            }
+
+            UData.SelectedRole = userRoles.Single();
+            await SetUserStateAsync(stepCtx.Context, canTkn);
+
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
-        private async Task<DialogTurnResult> AskRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> AskRoleStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var userRoles = (Role[])stepContext.Result;
-            
-            //TODO: Distinguish Role.SuperAdmin's behavior
-            if (userRoles.Any(r => r.IsBackend()))
-                userRoles = new Role[] { Role.Student, Role.Parent, Role.Teacher, Role.Secretary, Role.SchoolAdmin };
+            var rolesToSel = stepCtx.Values["RolesToSelect"] as RoleRank[];
 
-            stepContext.Values.Add("translatedRoles", userRoles);
-
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Θα ήθελες να συνδεθείς ως:"),
                     RetryPrompt = MessageFactory.Text("Παρακαλώ επίλεξε έναν από τους παρακάτω ρόλους:"),
-                    Choices = ChoiceFactory.ToChoices(userRoles.Select(r => r.ToNormalizedString()).ToArray())
-                });
+                    Choices = ChoiceFactory.ToChoices(rolesToSel!.Select(r => r.ToFriendlyString()).ToArray())
+                },
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> SelectRoleStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> SelectRoleStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            Role selRole = ((Role[])stepContext.Values["translatedRoles"]).ElementAt(foundChoice.Index);
+            var foundChoice = (FoundChoice)stepCtx.Result;
 
-            var mainState = new MainState
-            {
-                IsRoleChecked = true,
-                SelectedRole = selRole
-            };
-            await mainStateAccesor.SetAsync(stepContext.Context, mainState, cancellationToken);
+            var rolesToSel = stepCtx.Values["RolesToSelect"] as RoleRank[];
 
-            return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
+            UData.SelectedRole = rolesToSel!.ElementAt(foundChoice.Index);
+            await SetUserStateAsync(stepCtx.Context, canTkn);
+
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion

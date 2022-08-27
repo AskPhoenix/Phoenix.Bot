@@ -1,28 +1,18 @@
-﻿using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Bot.Schema;
-using Phoenix.Bot.Utilities.Dialogs.Prompts;
-using Phoenix.Bot.Utilities.Dialogs;
-using Phoenix.Bot.Utilities.State;
-using Phoenix.Bot.Utilities.State.Options;
-using System.Linq;
-using System;
+﻿using Microsoft.Bot.Schema;
 using Phoenix.Bot.Utilities.Actions;
+using Phoenix.Bot.Utilities.State.Options.Actions;
 
 namespace Phoenix.Bot.Dialogs.Actions
 {
-    public class HelpDialog : ComponentDialog
+    public class HelpDialog : StateDialog
     {
-        private readonly IStatePropertyAccessor<UserData> userDataAccesor;
-
-        public HelpDialog(UserState userState)
-            : base(nameof(HelpDialog))
+        public HelpDialog(
+            UserState userState,
+            ConversationState convState,
+            ApplicationUserManager userManager,
+            PhoenixContext phoenixContext)
+            : base(userState, convState, userManager, phoenixContext, nameof(HelpDialog))
         {
-            this.userDataAccesor = userState.CreateProperty<UserData>(nameof(UserData));
-
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new UnaccentedChoicePrompt(PromptNames.HiddenChoices, PromptValidators.HiddenChoicesValidator));
 
@@ -71,50 +61,58 @@ namespace Phoenix.Bot.Dialogs.Actions
             InitialDialogId = WaterfallNames.Help.Intro;
         }
 
-        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options, CancellationToken cancellationToken = default)
+        protected override Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc, object options,
+            CancellationToken canTkn = default)
         {
-            var helpOptions = options as HelpOptions;
+            var helpOptions = (HelpOptions)options;
             if (helpOptions.AskForTutorial)
                 InitialDialogId = WaterfallNames.Help.Ask;
 
-            return base.OnBeginDialogAsync(innerDc, options, cancellationToken);
+            return base.OnBeginDialogAsync(innerDc, options, canTkn);
         }
 
-        protected override Task OnEndDialogAsync(ITurnContext context, DialogInstance instance, DialogReason reason, CancellationToken cancellationToken = default)
+        protected override async Task OnEndDialogAsync(ITurnContext context, DialogInstance instance,
+            DialogReason reason, CancellationToken canTkn = default)
         {
-            context.SendActivityAsync("Αν χρειαστείς βοήθεια, μη διστάσεις να ακολουθήσεις την περιήγηση αυτή ξανά!").Wait();
-            return base.OnEndDialogAsync(context, instance, reason, cancellationToken);
+            await context.SendActivityAsync("Αν χρειαστείς βοήθεια, μη διστάσεις να ακολουθήσεις την περιήγηση αυτή ξανά!");
+            
+            await base.OnEndDialogAsync(context, instance, reason, canTkn);
         }
 
         #region Ask Waterfall Dialog
 
-        private async Task<DialogTurnResult> HelpAskStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> HelpAskStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new YesNoPromptOptions("Θα ήθελες να σου δείξω τι μπορώ να κάνω με μια σύντομη περιήγηση;"),
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> HelpReplyStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> HelpReplyStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
+            var foundChoice = (FoundChoice)stepCtx.Result;
+
             if (foundChoice.Index == 0)
             {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁 Ας ξεκινήσουμε!"));
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Intro, stepContext.Options, cancellationToken);
+                await stepCtx.Context.SendActivityAsync(MessageFactory.Text("Τέλεια! 😁 Ας ξεκινήσουμε!"));
+
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Intro, stepCtx.Options, canTkn);
             }
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Intro Waterfall Dialog
 
-        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            await stepContext.Context.SendActivityAsync("Αρχικά, ας δούμε τα βασικά:");
+            await stepCtx.Context.SendActivityAsync("Αρχικά, ας δούμε τα βασικά:");
 
             var cards = new HeroCard[3]
             {
@@ -123,30 +121,33 @@ namespace Phoenix.Bot.Dialogs.Actions
                 new HeroCard(title: "💬 Μηνύματα", subtitle: "Η επικοινωνία στους διάφορους διαλόγους γίνεται μέσω μηνυμάτων.")
             };
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
 
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new NavigationPromptOptions(hasPrevious: false),
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> IntroContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> IntroContinueStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Value is NavigationPromptOptions.Next)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepContext.Options, cancellationToken);
+            var foundChoice = (FoundChoice)stepCtx.Result;
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            if (foundChoice.Index == 1)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepCtx.Options, canTkn);
+
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Menu Waterfall Dialog
 
-        private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> MenuStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            await stepContext.Context.SendActivityAsync("Τώρα ας δούμε το «αρχικό μενού»:");
+            await stepCtx.Context.SendActivityAsync("Τώρα ας δούμε το «αρχικό μενού»:");
 
             var cards = new HeroCard[3]
             {
@@ -155,44 +156,45 @@ namespace Phoenix.Bot.Dialogs.Actions
                 new HeroCard(title: "🏁 Ολοκλήρωση", subtitle: "Μόλις ολοκληρωθεί ένας διάλογος, το «αρχικό μενού» εμφανίζεται και πάλι.")
             };
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
 
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new NavigationPromptOptions(),
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> MenuContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> MenuContinueStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Value is NavigationPromptOptions.Previous)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Intro, stepContext.Options, cancellationToken);
-            if (foundChoice.Value is NavigationPromptOptions.Next)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
+            var foundChoice = (FoundChoice)stepCtx.Result;
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            if (foundChoice.Index == 1)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Intro, stepCtx.Options, canTkn);
+            if (foundChoice.Index == 2)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepCtx.Options, canTkn);
+
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Actions Waterfall Dialog
 
-        private async Task<DialogTurnResult> ActionsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionsStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            // TODO: Decide depending on the Role
-            bool canEdit = false;
+            bool isStaff = UData.SelectedRole.HasValue && UData.SelectedRole.Value.IsStaff();
             
-            await stepContext.Context.SendActivityAsync("Στη συνέχεια ας δούμε τις διαθέσιμες δυνατότητες:");
+            await stepCtx.Context.SendActivityAsync("Στη συνέχεια ας δούμε τις διαθέσιμες δυνατότητες:");
 
             var cards = new HeroCard[5]
             {
-                new HeroCard(title: "📚 Εργασίες", subtitle: (canEdit ? "Διαχειρίσου" : "Ανακάλυψε") + " τις εργασίες για επόμενα ή προηγούμενα μαθήματα.")
+                new HeroCard(title: "📚 Εργασίες", subtitle: (isStaff ? "Διαχειρίσου" : "Ανακάλυψε") + " τις εργασίες για επόμενα ή προηγούμενα μαθήματα.")
                 {
                     Buttons = new CardAction[1] { new CardAction(type: ActionTypes.ImBack, title: "🦜 Περισσότερα", value: "Περισσότερα για τις εργασίες") }
                 },
-                new HeroCard(title: "📝 Διαγωνίσματα", subtitle: (canEdit ? "Διαχειρίσου" : "Βρες") + " τα επερχόμενα διαγωνίσματα και τους βαθμούς των παλαιότερων.")
+                new HeroCard(title: "📝 Διαγωνίσματα", subtitle: (isStaff ? "Διαχειρίσου" : "Βρες") + " τα επερχόμενα διαγωνίσματα και τους βαθμούς των παλαιότερων.")
                 {
                     Buttons = new CardAction[1] { new CardAction(type: ActionTypes.ImBack, title: "🕊 Περισσότερα", value: "Περισσότερα για τα διαγωνίσματα") }
                 },
@@ -203,72 +205,86 @@ namespace Phoenix.Bot.Dialogs.Actions
                 new HeroCard(title: "💪 Βοήθεια", subtitle: "Άνοιξε την τρέχουσα περιήγηση για να λάβεις βοήθεια."),
                 new HeroCard(title: "👍 Σχόλια", subtitle: "Βοήθησέ μας να γίνουμε καλύτεροι αφήνοντας ένα σχόλιο.")
             };
+            
             //new HeroCard(title: "💯 Βαθμολογίες", subtitle: "Εισαγωγή των βαθμολογιών των εργασιών και των διαγωνισμάτων."),
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
 
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 PromptNames.HiddenChoices,
                 new NavigationPromptOptions()
                 {
                     Validations = new string[3] { "Περισσότερα για τις εργασίες", "Περισσότερα για τα διαγωνίσματα", "Περισσότερα για το πρόγραμμα" }
-                },
-                cancellationToken);
+                }, canTkn);
         }
 
-        private async Task<DialogTurnResult> ActionsContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionsContinueStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Value is NavigationPromptOptions.Previous)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepContext.Options, cancellationToken);
-            if (foundChoice.Value is NavigationPromptOptions.Next)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepContext.Options, cancellationToken);
+            var foundChoice = (FoundChoice)stepCtx.Result;
+
+            if (foundChoice.Index == 1)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Menu, stepCtx.Options, canTkn);
+            if (foundChoice.Index == 2)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepCtx.Options, canTkn);
+            
             if (foundChoice.Index >= 3 && foundChoice.Index <= 5)
             {
-                (stepContext.Options as HelpOptions).DetailedAction = foundChoice.Index - 2;
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.ActionDetails, stepContext.Options, cancellationToken);
+                var options = (HelpOptions)stepCtx.Options;
+                options.DetailedAction = foundChoice.Index - 2;
+
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.ActionDetails,
+                    stepCtx.Options, canTkn);
             }
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Action Details Waterfall Dialog
 
-        private async Task<DialogTurnResult> ActionDetailsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionDetailsStepAsync(WaterfallStepContext stepCtx,
+            CancellationToken canTkn)
         {
-            //var topic = (BotAction)(stepContext.Options as HelpOptions).DetailedAction;
-            var topic = (stepContext.Options as HelpOptions).DetailedAction switch
+            var options = (HelpOptions)stepCtx.Options;
+
+            var action = options.DetailedAction switch
             {
                 1 => BotAction.Exercises,
                 2 => BotAction.Exams,
-                _ => BotAction.ScheduleWeekly
+                _ => BotAction.ScheduleWeek
             };
-            var topicName = topic == BotAction.Exercises ? "τις ασκήσεις" : topic == BotAction.Exams ? "τα διαγωνίσματα" : "το πρόγραμμα";
+
+            var actionName = action switch
+            {
+                BotAction.Exercises     => "τις ασκήσεις",
+                BotAction.Exams         => "τα διαγωνίσματα",
+                BotAction.ScheduleWeek  => "το πρόγραμμα",
+                _                       => string.Empty
+            };
             
-            await stepContext.Context.SendActivityAsync("Παρακάτω θα βρεις περισσότερες πληροφορίες για " + topicName + ":");
+            await stepCtx.Context.SendActivityAsync(
+                "Παρακάτω θα βρεις περισσότερες πληροφορίες για " + actionName + ":");
 
-            var userData = await userDataAccesor.GetAsync(stepContext.Context, null, cancellationToken);
-            // TODO: Decide depending on the Role
-            bool canEdit = false;
+            bool isStaff = UData.SelectedRole.HasValue && UData.SelectedRole.Value.IsStaff();
 
-            var cards = topic switch
+            var cards = action switch
             {
                 BotAction.Exercises => new HeroCard[3]
                 {
-                    new HeroCard(title: "📚 Eργασίες", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε") + " τη δουλειά για το σπίτι για κάποιο μάθημα."),
-                    new HeroCard(title: "⏭ Για το επόμενο μάθημα", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " τις εργασίες για το σπίτι για το επόμενο μάθημα."),
+                    new HeroCard(title: "📚 Eργασίες", subtitle: (isStaff ? "Διαχειρίσου" : "Μάθε") + " τη δουλειά για το σπίτι για κάποιο μάθημα."),
+                    new HeroCard(title: "⏭ Για το επόμενο μάθημα", subtitle: (isStaff ? "Διαχειρίσου" : "Δες") + " τις εργασίες για το σπίτι για το επόμενο μάθημα."),
                     new HeroCard(title: "⌚ Για άλλο μάθημα", subtitle: "Κάνε αναζήτηση εργασιών για κάποιου παλαιότερο ή μελλοντικό μάθημα.")
                 },
                 BotAction.Exams => new HeroCard[4]
                 {
                     new HeroCard(title: "📝 Διαγωνίσματα", subtitle: "Προετοιμασία για τα επόμενα διαγωνίσματα και βαθμοί των προηγούμενων."),
-                    new HeroCard(title: "💯 Επιδόσεις", subtitle: (canEdit ? "Διαχειρίσου" : "Έλεγξε") + " τη βαθμολογία για παλαιότερα διαγωνίσματα."),
-                    new HeroCard(title: "🔮 Μελλοντικά", subtitle: (canEdit ? "Διαχειρίσου" : "Μάθε πότε είναι") + " τα επόμενα διαγωνίσματα."),
-                    new HeroCard(title: "🏃 Προετοιμασία", subtitle: (canEdit ? "Διαχειρίσου" : "Δες") + " την ύλη και τι χρειάζεται διάβασμα για ένα προγραμματισμένο διαγώνισμα.")
+                    new HeroCard(title: "💯 Επιδόσεις", subtitle: (isStaff ? "Διαχειρίσου" : "Έλεγξε") + " τη βαθμολογία για παλαιότερα διαγωνίσματα."),
+                    new HeroCard(title: "🔮 Μελλοντικά", subtitle: (isStaff ? "Διαχειρίσου" : "Μάθε πότε είναι") + " τα επόμενα διαγωνίσματα."),
+                    new HeroCard(title: "🏃 Προετοιμασία", subtitle: (isStaff ? "Διαχειρίσου" : "Δες") + " την ύλη και τι χρειάζεται διάβασμα για ένα προγραμματισμένο διαγώνισμα.")
                 },
-                BotAction.ScheduleWeekly => new HeroCard[5]
+                BotAction.ScheduleWeek => new HeroCard[5]
                 {
                     new HeroCard(title: "📅 Πρόγραμμα", subtitle: "Μάθε το πρόγραμμα των μαθημάτων και ενημερώσου για τις αλλαγές του."),
                     new HeroCard(title: "🌞 Σημερινό", subtitle: "Δες τις ώρες και τις αίθουσες για τα σημερινά μαθήματα."),
@@ -279,34 +295,36 @@ namespace Phoenix.Bot.Dialogs.Actions
                 _ => Array.Empty<HeroCard>()
             };
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
 
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new NavigationPromptOptions(),
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> ActionDetailsContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> ActionDetailsContinueStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
         {
-            (stepContext.Options as HelpOptions).DetailedAction = 0;
+            var foundChoice = (FoundChoice)stepCtx.Result;
+            var options = (HelpOptions)stepCtx.Options;
+            
+            options.DetailedAction = 0;
+            
+            if (foundChoice.Index == 1)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepCtx.Options, canTkn);
+            if (foundChoice.Index == 2)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepCtx.Options, canTkn);
 
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Value is NavigationPromptOptions.Previous)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
-            if (foundChoice.Value is NavigationPromptOptions.Next)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Commands, stepContext.Options, cancellationToken);
-
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion
 
         #region Commands Waterfall Dialog
 
-        private async Task<DialogTurnResult> CommandsStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> CommandsStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
         {
-            await stepContext.Context.SendActivityAsync("Τέλος, ας δούμε τις διάφορες «εντολές», τις οποίες μπορείς να γράψεις ανά πάσα στιγμή:");
+            await stepCtx.Context.SendActivityAsync("Τέλος, ας δούμε τις διάφορες «εντολές», τις οποίες μπορείς να γράψεις ανά πάσα στιγμή:");
 
             var cards = new HeroCard[6]
             {
@@ -318,23 +336,24 @@ namespace Phoenix.Bot.Dialogs.Actions
                 new HeroCard(title: "👍 Σχόλια", subtitle: "Γράψε «σχόλιο» για να μας πεις την άποψή σου.")
             };
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
+            await stepCtx.Context.SendActivityAsync(MessageFactory.Carousel(cards.Select(c => c.ToAttachment())));
 
-            return await stepContext.PromptAsync(
+            return await stepCtx.PromptAsync(
                 nameof(UnaccentedChoicePrompt),
                 new NavigationPromptOptions(hasNext: false),
-                cancellationToken);
+                canTkn);
         }
 
-        private async Task<DialogTurnResult> CommandsContinueStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> CommandsContinueStepAsync(WaterfallStepContext stepCtx, CancellationToken canTkn)
         {
-            var foundChoice = stepContext.Result as FoundChoice;
-            if (foundChoice.Value is NavigationPromptOptions.Previous)
-                return await stepContext.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepContext.Options, cancellationToken);
-            if (foundChoice.Value is NavigationPromptOptions.Next)
-                await stepContext.Context.SendActivityAsync("Ελπίζω η περιήγηση να σου φάνηκε χρήσιμη! 😊");
+            var foundChoice = (FoundChoice)stepCtx.Result;
 
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            if (foundChoice.Index == 1)
+                return await stepCtx.ReplaceDialogAsync(WaterfallNames.Help.Actions, stepCtx.Options, canTkn);
+                
+            await stepCtx.Context.SendActivityAsync("Ελπίζω η περιήγηση να σου φάνηκε χρήσιμη! 😊");
+
+            return await stepCtx.EndDialogAsync(null, canTkn);
         }
 
         #endregion

@@ -1,41 +1,61 @@
 ﻿using Bot.Builder.Community.Storage.EntityFramework;
-using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Builder.TraceExtensions;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Phoenix.DataHandle.Main;
+using Microsoft.Bot.Connector.Authentication;
+using Phoenix.Language.Bot.Types.BotError;
 
 namespace Phoenix.Bot.Adapters
 {
-    public class AdapterWithErrorHandler : BotFrameworkHttpAdapter
+    public class AdapterWithErrorHandler : CloudAdapter
     {
-        public AdapterWithErrorHandler(ConversationState conversationState, IConfiguration configuration,
-            ILogger<BotFrameworkHttpAdapter> logger, EntityFrameworkTranscriptStore transcriptStore)
-            : base(configuration, logger)
+        public AdapterWithErrorHandler(
+            BotFrameworkAuthentication auth,
+            ILogger<AdapterWithErrorHandler> logger,
+            ConversationState convState,
+            EntityFrameworkTranscriptStore transcriptStore)
+            : base(auth, logger)
         {
-            OnTurnError = async (turnContext, exception) =>
+            OnTurnError = async (turnCtx, exception) =>
             {
                 // Store the Activity and the Exception Message in BotTranscript Table
-                if (turnContext.Activity.ChannelId.ToLoginProvider() != LoginProvider.Emulator)
+                if (turnCtx.Activity.ChannelId.ToChannelProvider() != ChannelProvider.Emulator)
                 {
-                    var activity = turnContext.Activity;
-                    activity.Value = exception.Message;
-                    await transcriptStore.LogActivityAsync(activity);
+                    turnCtx.Activity.Value = exception.Message;
+                    await transcriptStore.LogActivityAsync(turnCtx.Activity);
                 }
 
                 // Delete the Conversation State
-                await conversationState.DeleteAsync(turnContext);
-                await conversationState.SaveChangesAsync(turnContext);
+                await convState.DeleteAsync(turnCtx);
+                await convState.SaveChangesAsync(turnCtx);
 
-                // Log any leaked exception from the application.
-                logger.LogError(exception, $"[OnTurnError] unhandled error : {exception.Message}");
+                // Show Error code
+                if (exception is BotException botException)
+                {
+                    await turnCtx.SendActivityAsync(botException.Message);
 
-                // Send a message to the user
-                await turnContext.SendActivityAsync(MessageFactory.SuggestedActions(new string[1] { "🏠 Αρχική" }, "Λυπάμαι, υπήρξε ένα πρόβλημα :("));
-                
+                    if (!botException.ShowMessageOnly)
+                    {
+                        await turnCtx.SendActivityAsync(botException.Solution);
+                        await turnCtx.SendActivityAsync(MessageFactory.SuggestedActions(
+                            new string[1] { "🏠 Αρχική" }, $"({ErrorResources.Code}: {botException.Code})"));
+                    }
+
+                    logger.LogError(exception, "Bot Error {Name}: {Code}",
+                        botException.Error.ToString(), botException.Code);
+                }
+                else
+                {
+                    // Send a message to the user
+                    await turnCtx.SendActivityAsync(MessageFactory.SuggestedActions(
+                        new string[1] { "🏠 Αρχική" }, BotError.Unknown.GetMessage() + " 😓"));
+
+                    // Log any leaked exception from the application
+                    logger.LogError(exception, "[OnTurnError] unhandled error : {Msg}", exception.Message);
+                }
+
                 // Send a trace activity, which will be displayed in the Bot Framework Emulator
-                await turnContext.TraceActivityAsync("OnTurnError Trace", exception.Message, "https://www.botframework.com/schemas/error", "TurnError");
+                await turnCtx.TraceActivityAsync("OnTurnError Trace", exception.Message,
+                    "https://www.botframework.com/schemas/error", "TurnError");
             };
         }
     }
