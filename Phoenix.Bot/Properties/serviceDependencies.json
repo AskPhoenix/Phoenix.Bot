@@ -3,6 +3,11 @@
     "compute.appService1": {
       "group": "connections",
       "type": "compute.appService"
+    },
+    "appInsights1": {
+      "type": "appInsights",
+      "connectionId": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+      "dynamicId": null
     }
   }
 }

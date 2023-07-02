@@ -1,3 +1,4 @@
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 

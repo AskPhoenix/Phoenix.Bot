@@ -93,14 +93,14 @@ builder.Services.AddScoped<FeedbackDialog>();
 
 # region Miscellaneous Services
 
-builder.Services.AddApplicationInsightsTelemetry(
-    o => o.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]);
+builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddSnapshotCollector();
+builder.Logging.AddApplicationInsights();
 
 builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
 builder.Services.AddScoped(_ =>
     new SmsSender(builder.Configuration["Vonage:Key"], builder.Configuration["Vonage:Secret"]));
-
 #endregion
 
 

@@ -28,7 +28,7 @@ namespace Phoenix.Bot.Dialogs.Auth
 
             AddDialog(new UnaccentedChoicePrompt(nameof(UnaccentedChoicePrompt)));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
-            AddDialog(new NumberPrompt<long>(PromptNames.Phone, PromptValidators.PhoneNumberPromptValidator));
+            AddDialog(new TextPrompt(PromptNames.Phone, PromptValidators.PhonePromptValidator));
 
             AddDialog(verificationDialog);
 
@@ -125,7 +125,7 @@ namespace Phoenix.Bot.Dialogs.Auth
                 new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Παρακαλώ πληκτρολόγησε τον αριθμό παρακάτω:"),
-                    RetryPrompt = MessageFactory.Text("Ο αριθμός τηλεφώνου πρέπει να είναι στη μορφή 69xxxxxxxx. Παρακαλώ πληκτρολόγησέ τον ξανά:")
+                    RetryPrompt = MessageFactory.Text("Ο αριθμός τηλεφώνου πρέπει να είναι στη μορφή 69xxxxxxxx ή +3369xxxxxxxx. Παρακαλώ πληκτρολόγησέ τον ξανά:")
                 }, canTkn);
         }
 
@@ -133,7 +133,7 @@ namespace Phoenix.Bot.Dialogs.Auth
             CancellationToken canTkn)
         {
             var options = (AuthenticationOptions)stepCtx.Options;
-            var phone = (string)stepCtx.Result;
+            var phone = ((string)stepCtx.Result).Replace(" ", "");
 
             if (!phone.StartsWith('+'))
                 phone += CData.School.SchoolSetting.PhoneCountryCode;

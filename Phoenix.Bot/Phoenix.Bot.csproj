@@ -11,6 +11,7 @@
     <Copyright>AskPhoenix 2022</Copyright>
     <PackageProjectUrl>https://www.askphoenix.gr/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AskPhoenix/Phoenix.Bot</RepositoryUrl>
+    <ApplicationInsightsResourceId>/subscriptions/21af8426-0b31-4244-9a9f-50c08ee90ee4/resourceGroups/PhoenicopterusRsrcG/providers/microsoft.insights/components/tourlida</ApplicationInsightsResourceId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,12 +23,13 @@
     <PackageReference Include="AdaptiveCards" Version="2.7.*" />
     <PackageReference Include="Bot.Builder.Community.Storage.EntityFramework" Version="4.13.*" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.*" />
+    <PackageReference Include="Microsoft.ApplicationInsights.SnapshotCollector" Version="1.4.3" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.*" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.17.*" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.17.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="6.0.*" />
-    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.*" />
+    <PackageReference Include="Phoenix.Bot.Utilities" Version="3.0.1.1" />
     <PackageReference Include="Phoenix.DataHandle" Version="3.0.*" />
     <PackageReference Include="Phoenix.Language" Version="3.0.0-alpha.*" />
   </ItemGroup>

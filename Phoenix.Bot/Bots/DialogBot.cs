@@ -53,7 +53,7 @@ namespace Phoenix.Bot.Bots
         public override async Task OnTurnAsync(ITurnContext turnCtx,
         CancellationToken canTkn = default)
         {
-            await turnCtx.SendActivityAsync(new Activity { Type = ActivityTypes.Typing }, canTkn);
+            //await turnCtx.SendActivityAsync(new Activity { Type = ActivityTypes.Typing }, canTkn);
 
             var userData = await _userDataAcsr.GetAsync(turnCtx, () => new(), canTkn);
             var convData = await _convDataAcsr.GetAsync(turnCtx, () => new(), canTkn);

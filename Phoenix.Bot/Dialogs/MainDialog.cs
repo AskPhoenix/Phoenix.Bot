@@ -45,6 +45,37 @@ namespace Phoenix.Bot.Dialogs
             InitialDialogId = WaterfallNames.Main.Top;
         }
 
+        public override async Task<DialogTurnResult> BeginDialogAsync(DialogContext outerDc,
+            object options, CancellationToken cancellationToken = default)
+        {
+            await this.GetStateAsync(outerDc.Context, cancellationToken);
+
+            return await base.BeginDialogAsync(outerDc, options, cancellationToken);
+        }
+
+        protected override async Task<DialogTurnResult> OnBeginDialogAsync(DialogContext innerDc,
+            object options, CancellationToken cancellationToken = default)
+        {
+            await this.GetStateAsync(innerDc.Context, cancellationToken);
+
+            return await base.OnBeginDialogAsync(innerDc, options, cancellationToken);
+        }
+
+        public override async Task<DialogTurnResult> ContinueDialogAsync(DialogContext outerDc, CancellationToken cancellationToken = default)
+        {
+            await this.GetStateAsync(outerDc.Context, cancellationToken);
+
+            return await base.ContinueDialogAsync(outerDc, cancellationToken);
+        }
+
+        protected override async Task<DialogTurnResult> OnContinueDialogAsync(DialogContext innerDc,
+            CancellationToken cancellationToken = default)
+        {
+            await this.GetStateAsync(innerDc.Context, cancellationToken);
+
+            return await base.OnContinueDialogAsync(innerDc, cancellationToken);
+        }
+
         #region Top Waterfall Dialog
 
         private async Task<DialogTurnResult> IntroStepAsync(WaterfallStepContext stepCtx,
